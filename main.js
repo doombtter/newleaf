@@ -53,10 +53,11 @@ let mainWindow = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 1200,
-    minHeight: 720,
+    width: 1680,
+    height: 1040,
+    minWidth: 1280,
+    minHeight: 800,
+    show: false,
     backgroundColor: '#F5F0E8',
     title: '새이파리 육묘장 관리',
     icon: path.join(__dirname, 'build', 'icon.png'),
@@ -66,6 +67,11 @@ function createWindow() {
       nodeIntegration: false,
       sandbox: false
     }
+  });
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
   });
 
   const menu = Menu.buildFromTemplate([

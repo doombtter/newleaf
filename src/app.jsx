@@ -77,17 +77,13 @@ const App = () => {
           <div className="meta">
             <div className="row" style={{gap:6}}><Icons.Calendar size={16}/> {today.label}</div>
             <div className="row" style={{gap:6}}>
-              <span style={{position:'relative'}}>
-                <Icons.Bell size={18}/>
-                <span style={{position:'absolute', top:-2, right:-2, width:8, height:8, borderRadius:'50%', background:'var(--warn)'}}/>
-              </span>
               <span style={{fontWeight:600}}>{window.BIZ.owner} 사장님</span>
             </div>
           </div>
         </div>
         <div className="content">
           {page === 'home' && <HomeScreen onNav={setPage}/>}
-          {page === 'entry' && <EntryScreen key={entryKey} onPrint={(d) => setInvoice(d)} onSaved={onSaved}/>}
+          {page === 'entry' && <EntryScreen key={entryKey} onPrint={(d) => setInvoice(d)} onSaved={onSaved} onNav={setPage}/>}
           {page === 'customers' && <CustomersScreen onNav={setPage}/>}
           {page === 'inventory' && <InventoryScreen/>}
           {page === 'schedule' && <ScheduleScreen/>}

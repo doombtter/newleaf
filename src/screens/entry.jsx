@@ -88,7 +88,7 @@ const ItemAutocomplete = ({ value, onSelect, onChange, autoFocus }) => {
 
 const blankRow = () => ({ key: Math.random().toString(36).slice(2), itemId: null, itemName: '', spec: '', qty: '', price: 0 });
 
-const EntryScreen = ({ onPrint, onSaved, prefill }) => {
+const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
   const state = window.Store.state;
   const [customerId, setCustomerId] = useState(prefill?.customerId || (state.customers[0]?.id || 1));
   const [date] = useState(window.todayKey());
@@ -219,6 +219,23 @@ const EntryScreen = ({ onPrint, onSaved, prefill }) => {
       qty: 1,
     });
   };
+
+  if (state.customers.length === 0 || state.items.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-body" style={{padding:60, textAlign:'center'}}>
+          <div className="muted" style={{fontSize:15, marginBottom:8}}>거래를 입력하려면 먼저 거래처와 품목을 등록하세요.</div>
+          <div className="muted" style={{fontSize:13, marginBottom:18}}>
+            현재 거래처 {state.customers.length}곳 · 품목 {state.items.length}종
+          </div>
+          <div className="row" style={{justifyContent:'center', gap:10}}>
+            <button className="btn btn-primary" onClick={() => onNav && onNav('customers')}><Icons.Users size={16}/> 거래처 등록</button>
+            <button className="btn btn-primary" onClick={() => onNav && onNav('inventory')}><Icons.Box size={16}/> 품목 등록</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="entry-grid">
