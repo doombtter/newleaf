@@ -1,6 +1,7 @@
 // Persistence layer — uses Electron IPC when available, falls back to localStorage
 (function () {
-  const SCHEMA_VERSION = 1;
+  // v2: 샘플 시드 제거. 이전(v1) 샘플 데이터는 자동으로 폐기하고 빈 상태로 재시작.
+  const SCHEMA_VERSION = 2;
   const LS_KEY = 'saeipari.db.v1';
 
   const hasElectron = !!(window.saeipari && window.saeipari.load);
@@ -18,7 +19,8 @@
           if (raw) data = JSON.parse(raw);
         } catch {}
       }
-      if (!data || !data.schemaVersion) {
+      if (!data || data.schemaVersion !== SCHEMA_VERSION) {
+        // 데이터 없음 또는 구버전(샘플) → 빈 상태로 시작
         data = seedFactory();
         data.schemaVersion = SCHEMA_VERSION;
         await this._persist(data);
