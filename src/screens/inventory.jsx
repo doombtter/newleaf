@@ -130,10 +130,17 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
           <div className="field" style={{gridColumn:'span 2'}}><label>품목명</label><input className="input" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/></div>
           <div className="field"><label>품종</label><input className="input" value={form.variety||''} onChange={e=>setForm({...form, variety:e.target.value})}/></div>
           <div className="field"><label>규격</label><input className="input" value={form.spec||''} onChange={e=>setForm({...form, spec:e.target.value})}/></div>
-          <div className="field"><label>트레이 공수</label>
-            <select className="select" value={form.tray||50} onChange={e=>setForm({...form, tray:Number(e.target.value), spec: e.target.value+'구'})}>
-              {[50,72,105,128,200].map(n => <option key={n} value={n}>{n}공</option>)}
-            </select>
+          <div className="field"><label>트레이 공수 (직접 입력)</label>
+            <input className="input mono" type="number" min="1" list="tray-presets"
+              value={form.tray||''}
+              onChange={e=>{
+                const n = Number(e.target.value) || 0;
+                setForm({...form, tray:n, spec: n ? n+'구' : ''});
+              }}
+              placeholder="예: 50"/>
+            <datalist id="tray-presets">
+              {[32,40,50,72,98,105,128,162,200,288].map(n => <option key={n} value={n}/>)}
+            </datalist>
           </div>
           <div className="field"><label>기본 단가 (원)</label><input className="input mono" value={form.price||0} onChange={e=>setForm({...form, price:Number(e.target.value)||0})}/></div>
           <div className="field"><label>현재 재고 (트레이)</label><input className="input mono" value={form.stock||0} onChange={e=>setForm({...form, stock:Number(e.target.value)||0})}/></div>

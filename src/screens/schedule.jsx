@@ -180,10 +180,14 @@ const SowingCreateModal = ({ onClose, onSave }) => {
           <div className="field"><label>파종일</label><input className="input mono" value={form.sowDate} onChange={e=>setForm({...form, sowDate:e.target.value})} placeholder="YYYY.MM.DD"/></div>
           <div className="field"><label>육묘 기간 (일)</label><input className="input mono" value={form.growing} onChange={e=>setForm({...form, growing:Number(e.target.value)||0})}/></div>
           <div className="field"><label>트레이 수</label><input className="input mono" value={form.trays} onChange={e=>setForm({...form, trays:Number(e.target.value)||0})}/></div>
-          <div className="field"><label>트레이 규격 (공)</label>
-            <select className="select" value={form.traySize} onChange={e=>setForm({...form, traySize:Number(e.target.value)})}>
-              {[50,72,105,128,200].map(n => <option key={n} value={n}>{n}공</option>)}
-            </select>
+          <div className="field"><label>트레이 규격 (공, 직접 입력)</label>
+            <input className="input mono" type="number" min="1" list="tray-presets-sow"
+              value={form.traySize||''}
+              onChange={e=>setForm({...form, traySize:Number(e.target.value)||0})}
+              placeholder="예: 50"/>
+            <datalist id="tray-presets-sow">
+              {[32,40,50,72,98,105,128,162,200,288].map(n => <option key={n} value={n}/>)}
+            </datalist>
           </div>
           <div className="field" style={{gridColumn:'span 2'}}><label>비고</label><input className="input" value={form.memo} onChange={e=>setForm({...form, memo:e.target.value})}/></div>
           <div className="kv" style={{gridColumn:'span 2', background:'var(--green-50)'}}>
