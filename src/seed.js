@@ -80,7 +80,16 @@ window.seedFactory = () => ({
   monthlyPaid: 0,
   monthlyDue: 0,
   dailyRevenue: [],
+  trayPresets: [32, 40, 50, 72, 98, 105, 128, 162, 200, 288],
 });
+
+window.DEFAULT_TRAY_PRESETS = [32, 40, 50, 72, 98, 105, 128, 162, 200, 288];
+// 기존 데이터(추천 목록 필드 없음) 대비 안전 접근자
+window.getTrayPresets = () => {
+  const s = window.Store?.state;
+  if (s && !Array.isArray(s.trayPresets)) s.trayPresets = window.DEFAULT_TRAY_PRESETS.slice();
+  return s ? s.trayPresets : window.DEFAULT_TRAY_PRESETS.slice();
+};
 
 
 // Convenience accessors against Store.state

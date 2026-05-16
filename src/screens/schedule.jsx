@@ -186,7 +186,7 @@ const SowingCreateModal = ({ onClose, onSave }) => {
               onChange={e=>setForm({...form, traySize:Number(e.target.value)||0})}
               placeholder="예: 50"/>
             <datalist id="tray-presets-sow">
-              {[32,40,50,72,98,105,128,162,200,288].map(n => <option key={n} value={n}/>)}
+              {window.getTrayPresets().map(n => <option key={n} value={n}/>)}
             </datalist>
           </div>
           <div className="field" style={{gridColumn:'span 2'}}><label>비고</label><input className="input" value={form.memo} onChange={e=>setForm({...form, memo:e.target.value})}/></div>
