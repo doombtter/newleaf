@@ -127,6 +127,22 @@ window.removeTransaction = (id) => {
   s.transactions = s.transactions.filter(t => t.id !== id);
 };
 
+// 저장된 거래 → 거래명세서 미리보기 데이터
+window.txToInvoice = (tx) => {
+  if (!tx) return null;
+  return {
+    customer: window.findCustomer(tx.customerId),
+    date: tx.date,
+    rows: (tx.lines || []).map(l => ({ itemId: l.itemId, itemName: l.name, spec: l.spec, qty: l.qty, price: l.price })),
+    subtotal: tx.subtotal,
+    vat: tx.vat,
+    total: tx.total,
+    payment: tx.method,
+    memo: tx.memo,
+    txId: tx.id,
+  };
+};
+
 window.tierLabel = (tier) => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = (tier) => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
 window.priceFor = (item, customer) => {

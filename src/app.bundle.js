@@ -269,6 +269,28 @@ window.removeTransaction = id => {
   }
   s.transactions = s.transactions.filter(t => t.id !== id);
 };
+
+// 저장된 거래 → 거래명세서 미리보기 데이터
+window.txToInvoice = tx => {
+  if (!tx) return null;
+  return {
+    customer: window.findCustomer(tx.customerId),
+    date: tx.date,
+    rows: (tx.lines || []).map(l => ({
+      itemId: l.itemId,
+      itemName: l.name,
+      spec: l.spec,
+      qty: l.qty,
+      price: l.price
+    })),
+    subtotal: tx.subtotal,
+    vat: tx.vat,
+    total: tx.total,
+    payment: tx.method,
+    memo: tx.memo,
+    txId: tx.id
+  };
+};
 window.tierLabel = tier => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = tier => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
 window.priceFor = (item, customer) => {
@@ -453,7 +475,9 @@ window.Icons = Icons;
 /* ===== screens/home.jsx ===== */
 // Home dashboard
 const HomeScreen = ({
-  onNav
+  onNav,
+  onEditTx,
+  onReprint
 }) => {
   const state = window.Store.state;
   const [, force] = React.useReducer(x => x + 1, 0);
@@ -676,7 +700,7 @@ const HomeScreen = ({
     }
   }, "\uACB0\uC81C"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: 100
+      width: 150
     }
   }))), /*#__PURE__*/React.createElement("tbody", null, recentTx.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: "6",
@@ -712,7 +736,12 @@ const HomeScreen = ({
       }
     }, /*#__PURE__*/React.createElement("button", {
       className: "btn btn-sm btn-ghost",
-      title: "\uC7AC\uC778\uC1C4"
+      title: "\uC218\uC815",
+      onClick: () => onEditTx && onEditTx(t)
+    }, "\uC218\uC815"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-sm btn-ghost",
+      title: "\uC7AC\uCD9C\uB825",
+      onClick: () => onReprint && onReprint(t)
     }, /*#__PURE__*/React.createElement(Icons.Print, {
       size: 16
     })), /*#__PURE__*/React.createElement("button", {
@@ -852,22 +881,23 @@ const EntryScreen = ({
   onPrint,
   onSaved,
   onNav,
-  prefill
+  editTx
 }) => {
   const state = window.Store.state;
-  const [customerId, setCustomerId] = useState(prefill?.customerId || state.customers[0]?.id || 1);
-  const [date] = useState(window.todayKey());
+  const isEdit = !!editTx;
+  const [customerId, setCustomerId] = useState(editTx?.customerId || state.customers[0]?.id || 1);
+  const [date] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
-    if (prefill?.lines && prefill.lines.length) {
-      const r = prefill.lines.map((l, i) => {
+    if (editTx?.lines && editTx.lines.length) {
+      const r = editTx.lines.map((l, i) => {
         const it = window.findItem(l.itemId);
         return {
-          key: 'p' + i,
+          key: 'e' + i,
           itemId: l.itemId,
-          itemName: it ? it.name + (it.variety ? ` · ${it.variety}` : '') : '',
-          spec: it?.spec || '',
+          itemName: l.name || (it ? it.name + (it.variety ? ` · ${it.variety}` : '') : ''),
+          spec: l.spec || it?.spec || '',
           qty: l.qty,
-          price: window.priceFor(it, window.findCustomer(prefill.customerId))
+          price: l.price
         };
       });
       r.push(blankRow());
@@ -875,9 +905,9 @@ const EntryScreen = ({
     }
     return [blankRow()];
   });
-  const [payment, setPayment] = useState('cash');
-  const [memo, setMemo] = useState('');
-  const [vatIncluded, setVatIncluded] = useState(false);
+  const [payment, setPayment] = useState(editTx?.method || 'cash');
+  const [memo, setMemo] = useState(editTx?.memo || '');
+  const [vatIncluded, setVatIncluded] = useState(!!editTx?.vatIncluded);
   const [savedToast, setSavedToast] = useState(false);
   const updateRow = (key, patch) => {
     setRows(rs => {
@@ -898,58 +928,93 @@ const EntryScreen = ({
   const total = vatIncluded ? subtotal : subtotal + vat;
   const customer = window.findCustomer(customerId);
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
-  const buildPayload = () => ({
-    id: state.nextTransactionId,
-    date,
-    customerId,
-    subtotal,
-    vat,
-    total,
-    paid: payment === 'credit' ? 0 : total,
-    method: payment,
-    items: finalRows().length,
-    lines: finalRows().map(r => ({
-      itemId: r.itemId,
-      name: r.itemName,
-      spec: r.spec,
-      qty: Number(r.qty),
-      price: Number(r.price),
-      lineTotal: Number(r.qty) * Number(r.price)
-    })),
-    memo,
-    vatIncluded,
-    createdAt: new Date().toISOString()
-  });
+  const lineData = () => finalRows().map(r => ({
+    itemId: r.itemId,
+    name: r.itemName,
+    spec: r.spec,
+    qty: Number(r.qty),
+    price: Number(r.price),
+    lineTotal: Number(r.qty) * Number(r.price)
+  }));
+
+  // 거래의 재고/미수금 효과를 적용(+1) 또는 되돌림(-1)
+  const applyEffects = (tx, sign) => {
+    for (const l of tx.lines || []) {
+      const it = window.findItem(l.itemId);
+      if (it) it.stock = Math.max(0, (it.stock || 0) - sign * Number(l.qty));
+    }
+    if (tx.method === 'credit') {
+      const c = window.findCustomer(tx.customerId);
+      if (c) {
+        const outstanding = Math.max(0, (tx.total || 0) - (tx.paid || 0));
+        c.due = Math.max(0, (c.due || 0) + sign * outstanding);
+      }
+    }
+  };
   const persist = async () => {
-    const tx = buildPayload();
+    const lines = lineData();
+    if (isEdit) {
+      const old = state.transactions.find(t => t.id === editTx.id);
+      if (old) applyEffects(old, -1); // 기존 효과 원복
+      const keepPaid = old && old.method === 'credit' ? Math.min(old.paid || 0, total) : payment === 'credit' ? 0 : total;
+      const tx = {
+        ...old,
+        id: editTx.id,
+        date,
+        customerId,
+        subtotal,
+        vat,
+        total,
+        method: payment,
+        paid: payment === 'credit' ? keepPaid : total,
+        items: lines.length,
+        lines,
+        memo,
+        vatIncluded,
+        updatedAt: new Date().toISOString()
+      };
+      const idx = state.transactions.findIndex(t => t.id === editTx.id);
+      if (idx >= 0) state.transactions[idx] = tx;else state.transactions.unshift(tx);
+      applyEffects(tx, +1); // 새 효과 적용
+      for (const l of lines) {
+        const i = state.recentItems.indexOf(l.itemId);
+        if (i >= 0) state.recentItems.splice(i, 1);
+        state.recentItems.unshift(l.itemId);
+      }
+      state.recentItems = state.recentItems.slice(0, 8);
+      const c = window.findCustomer(customerId);
+      if (c) c.last = date;
+      await window.Store.commit();
+      return tx;
+    }
+    const tx = {
+      id: state.nextTransactionId,
+      date,
+      customerId,
+      subtotal,
+      vat,
+      total,
+      paid: payment === 'credit' ? 0 : total,
+      method: payment,
+      items: lines.length,
+      lines,
+      memo,
+      vatIncluded,
+      createdAt: new Date().toISOString()
+    };
     state.transactions.unshift(tx);
     state.nextTransactionId = tx.id + 1;
-    // recent items
-    for (const l of tx.lines) {
+    for (const l of lines) {
       const idx = state.recentItems.indexOf(l.itemId);
       if (idx >= 0) state.recentItems.splice(idx, 1);
       state.recentItems.unshift(l.itemId);
       const it = window.findItem(l.itemId);
-      if (it) {
-        it.useCount = (it.useCount || 0) + 1;
-        it.stock = Math.max(0, (it.stock || 0) - Number(l.qty));
-        state.stockMovements = state.stockMovements || [];
-        state.stockMovements.unshift({
-          itemId: it.id,
-          change: -Number(l.qty),
-          type: 'sale',
-          refId: tx.id,
-          at: new Date().toISOString()
-        });
-      }
+      if (it) it.useCount = (it.useCount || 0) + 1;
     }
     state.recentItems = state.recentItems.slice(0, 8);
-    // customer due/last
+    applyEffects(tx, +1);
     const c = window.findCustomer(customerId);
-    if (c) {
-      c.last = date;
-      if (payment === 'credit') c.due = (c.due || 0) + total;
-    }
+    if (c) c.last = date;
     await window.Store.commit();
     return tx;
   };
@@ -981,6 +1046,13 @@ const EntryScreen = ({
       txId: tx.id
     });
   };
+  useEffect(() => {
+    const onSaveKey = () => {
+      handleSave();
+    };
+    document.addEventListener('saeipari:save', onSaveKey);
+    return () => document.removeEventListener('saeipari:save', onSaveKey);
+  });
   const handleCancel = () => {
     if (confirm('입력 중인 거래를 취소하시겠습니까?')) {
       setRows([blankRow()]);
@@ -1043,7 +1115,7 @@ const EntryScreen = ({
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "\uC0C8 \uAC70\uB798\uBA85\uC138\uC11C"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h2", null, isEdit ? `거래 수정 · #${editTx.id}` : '새 거래명세서'), /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       gap: 8
@@ -1244,18 +1316,18 @@ const EntryScreen = ({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-lg",
-    onClick: handleCancel
-  }, "\uCDE8\uC18C"), /*#__PURE__*/React.createElement("button", {
+    onClick: isEdit ? () => onSaved && onSaved() : handleCancel
+  }, isEdit ? '닫기' : '취소'), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-lg",
     onClick: handleSave
   }, /*#__PURE__*/React.createElement(Icons.Save, {
     size: 18
-  }), " \uC800\uC7A5"), /*#__PURE__*/React.createElement("button", {
+  }), " ", isEdit ? '수정 저장' : '저장'), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-lg btn-primary",
     onClick: handleSaveAndPrint
   }, /*#__PURE__*/React.createElement(Icons.Print, {
     size: 18
-  }), " \uC800\uC7A5 \uD6C4 \uC778\uC1C4")))), /*#__PURE__*/React.createElement("div", {
+  }), " ", isEdit ? '저장 후 재출력' : '저장 후 인쇄')))), /*#__PURE__*/React.createElement("div", {
     className: "col",
     style: {
       gap: 14
@@ -1564,7 +1636,9 @@ window.InvoiceModal = InvoiceModal;
 /* ===== screens/customers.jsx ===== */
 // 거래처 관리
 const CustomersScreen = ({
-  onNav
+  onNav,
+  onEditTx,
+  onReprint
 }) => {
   const state = window.Store.state;
   const [selectedId, setSelectedId] = React.useState(state.customers[0]?.id || 1);
@@ -1876,7 +1950,7 @@ const CustomersScreen = ({
     }
   }, "\uACB0\uC81C"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: 100
+      width: 150
     }
   }))), /*#__PURE__*/React.createElement("tbody", null, txs.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: "5",
@@ -1910,7 +1984,12 @@ const CustomersScreen = ({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-sm btn-ghost",
-    title: "\uC7AC\uC778\uC1C4"
+    title: "\uC218\uC815",
+    onClick: () => onEditTx && onEditTx(t)
+  }, "\uC218\uC815"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm btn-ghost",
+    title: "\uC7AC\uCD9C\uB825",
+    onClick: () => onReprint && onReprint(t)
   }, /*#__PURE__*/React.createElement(Icons.Print, {
     size: 14
   })), /*#__PURE__*/React.createElement("button", {
@@ -3256,14 +3335,41 @@ const Sparkline = ({
 const StatsScreen = () => {
   const state = window.Store.state;
   const [period, setPeriod] = React.useState('month');
-  const totalSales = state.transactions.reduce((a, t) => a + (t.total || 0), 0);
-  const totalPaid = state.transactions.reduce((a, t) => a + (t.paid || 0), 0);
+  const toDate = s => {
+    const [y, m, d] = (s || '').split('.').map(Number);
+    return new Date(y, (m || 1) - 1, d || 1);
+  };
+  const now = new Date();
+  const rangeStart = (() => {
+    if (period === 'week') {
+      const d = new Date(now);
+      d.setDate(d.getDate() - 6);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+    if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (period === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return new Date(now.getFullYear(), 0, 1); // year
+  })();
+  const periodLabel = {
+    week: '최근 7일',
+    month: '이번 달',
+    quarter: '이번 분기',
+    year: '올해'
+  }[period];
+  const inRange = dateStr => {
+    const dt = toDate(dateStr);
+    return dt >= rangeStart && dt <= now;
+  };
+  const txns = state.transactions.filter(t => inRange(t.date));
+  const totalSales = txns.reduce((a, t) => a + (t.total || 0), 0);
+  const totalPaid = txns.reduce((a, t) => a + (t.paid || 0), 0);
   const totalDue = state.customers.reduce((a, c) => a + (c.due || 0), 0);
-  const txCount = state.transactions.length;
+  const txCount = txns.length;
 
-  // 품목별 집계 (lines가 비어있는 시드는 가상의 균등 분배)
+  // 품목별 집계
   const itemSalesMap = {};
-  state.transactions.forEach(t => {
+  txns.forEach(t => {
     if (t.lines && t.lines.length) {
       t.lines.forEach(l => {
         const it = window.findItem(l.itemId);
@@ -3281,7 +3387,7 @@ const StatsScreen = () => {
 
   // 거래처별 집계
   const custSalesMap = {};
-  state.transactions.forEach(t => {
+  txns.forEach(t => {
     custSalesMap[t.customerId] = (custSalesMap[t.customerId] || 0) + (t.total || 0);
   });
   const customerSales = Object.entries(custSalesMap).map(([id, amt]) => ({
@@ -3289,6 +3395,34 @@ const StatsScreen = () => {
     amt
   })).sort((a, b) => b.amt - a.amt).slice(0, 8);
   const maxCust = Math.max(...customerSales.map(i => i.amt), 1);
+
+  // 매출 추이: 주/월은 일별, 분기/년은 월별
+  const pad = n => String(n).padStart(2, '0');
+  const series = (() => {
+    const out = [];
+    if (period === 'quarter' || period === 'year') {
+      const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      while (cur <= now) {
+        const y = cur.getFullYear(),
+          m = cur.getMonth();
+        const sum = txns.filter(t => {
+          const d = toDate(t.date);
+          return d.getFullYear() === y && d.getMonth() === m;
+        }).reduce((a, t) => a + (t.total || 0), 0);
+        out.push([`${pad(m + 1)}월`, sum]);
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    } else {
+      const cur = new Date(rangeStart);
+      while (cur <= now) {
+        const key = `${cur.getFullYear()}.${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`;
+        const sum = txns.filter(t => t.date === key).reduce((a, t) => a + (t.total || 0), 0);
+        out.push([`${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`, sum]);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return out.length ? out : [['', 0]];
+  })();
   const exportCSV = (filename, headers, rows) => {
     const BOM = '﻿';
     const escape = v => {
@@ -3313,18 +3447,18 @@ const StatsScreen = () => {
   };
   const exports = [{
     title: '거래 내역',
-    desc: '기간 내 모든 거래',
-    file: `transactions_${window.todayKey()}.csv`,
-    run: () => exportCSV(`transactions_${window.todayKey()}.csv`, ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'], state.transactions.map(t => {
+    desc: `${periodLabel} 거래`,
+    file: `transactions_${period}_${window.todayKey()}.csv`,
+    run: () => exportCSV(`transactions_${period}_${window.todayKey()}.csv`, ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'], txns.map(t => {
       const c = window.findCustomer(t.customerId);
       return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, t.total - (t.paid || 0), t.memo || ''];
     }))
   }, {
     title: '거래처별 집계',
-    desc: '매출/미수금',
-    file: `customers_${window.todayKey()}.csv`,
-    run: () => exportCSV(`customers_${window.todayKey()}.csv`, ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'], state.customers.map(c => {
-      const txs = state.transactions.filter(t => t.customerId === c.id);
+    desc: `${periodLabel} 매출/미수금`,
+    file: `customers_${period}_${window.todayKey()}.csv`,
+    run: () => exportCSV(`customers_${period}_${window.todayKey()}.csv`, ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'], state.customers.map(c => {
+      const txs = txns.filter(t => t.customerId === c.id);
       return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a, t) => a + (t.total || 0), 0), c.due || 0];
     }))
   }, {
@@ -3432,8 +3566,8 @@ const StatsScreen = () => {
     className: "delta"
   }, "\uD3C9\uADE0 ", window.fmt(txCount ? Math.round(totalSales / txCount) : 0), "\uC6D0/\uAC74"))), /*#__PURE__*/React.createElement("div", {
     className: "section-title"
-  }, /*#__PURE__*/React.createElement("h2", null, "\uC77C\uBCC4 \uB9E4\uCD9C \uCD94\uC774 (\uCD5C\uADFC 14\uC77C)")), /*#__PURE__*/React.createElement(Sparkline, {
-    data: state.dailyRevenue || []
+  }, /*#__PURE__*/React.createElement("h2", null, "\uB9E4\uCD9C \uCD94\uC774 \xB7 ", periodLabel)), /*#__PURE__*/React.createElement(Sparkline, {
+    data: series
   }))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
@@ -3812,29 +3946,55 @@ const App = () => {
   const [page, setPage] = React.useState('home');
   const [invoice, setInvoice] = React.useState(null);
   const [entryKey, setEntryKey] = React.useState(0);
+  const [editTx, setEditTx] = React.useState(null);
+  const invoiceRef = React.useRef(null);
   const today = window.todayLabel();
+  const newEntry = () => {
+    setEditTx(null);
+    setEntryKey(k => k + 1);
+    setPage('entry');
+  };
+  const openEdit = tx => {
+    setEditTx(tx);
+    setEntryKey(k => k + 1);
+    setPage('entry');
+  };
+  const reprint = tx => setInvoice(window.txToInvoice(tx));
   React.useEffect(() => {
+    invoiceRef.current = invoice;
+  }, [invoice]);
+  React.useEffect(() => {
+    const doPrint = () => {
+      if (invoiceRef.current) {
+        window.print();
+      } else {
+        alert('인쇄는 거래명세서 미리보기에서만 가능합니다.\n거래 입력에서 "저장 후 인쇄"를 누르거나,\n홈·거래처의 거래 목록에서 "재출력"을 선택하세요.');
+      }
+    };
     if (window.saeipari?.onShortcut) {
       window.saeipari.onShortcut(key => {
-        if (key === 'new') {
-          setPage('entry');
-          setEntryKey(k => k + 1);
-        } else if (key === 'save') {
-          document.dispatchEvent(new CustomEvent('saeipari:save'));
-        }
+        if (key === 'new') newEntry();else if (key === 'save') document.dispatchEvent(new CustomEvent('saeipari:save'));else if (key === 'print') doPrint();
       });
     }
     const handler = e => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
         e.preventDefault();
-        setPage('entry');
-        setEntryKey(k => k + 1);
+        newEntry();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        doPrint();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent('saeipari:save'));
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
   const onSaved = () => {
+    setEditTx(null);
     setEntryKey(k => k + 1);
     setPage('home');
   };
@@ -3893,14 +4053,19 @@ const App = () => {
   }, window.BIZ.owner, " \uC0AC\uC7A5\uB2D8")))), /*#__PURE__*/React.createElement("div", {
     className: "content"
   }, page === 'home' && /*#__PURE__*/React.createElement(HomeScreen, {
-    onNav: setPage
+    onNav: setPage,
+    onEditTx: openEdit,
+    onReprint: reprint
   }), page === 'entry' && /*#__PURE__*/React.createElement(EntryScreen, {
     key: entryKey,
+    editTx: editTx,
     onPrint: d => setInvoice(d),
     onSaved: onSaved,
     onNav: setPage
   }), page === 'customers' && /*#__PURE__*/React.createElement(CustomersScreen, {
-    onNav: setPage
+    onNav: setPage,
+    onEditTx: openEdit,
+    onReprint: reprint
   }), page === 'inventory' && /*#__PURE__*/React.createElement(InventoryScreen, null), page === 'schedule' && /*#__PURE__*/React.createElement(ScheduleScreen, null), page === 'stats' && /*#__PURE__*/React.createElement(StatsScreen, null), page === 'settings' && /*#__PURE__*/React.createElement(SettingsScreen, null))), /*#__PURE__*/React.createElement(InvoiceModal, {
     data: invoice,
     onClose: () => setInvoice(null)

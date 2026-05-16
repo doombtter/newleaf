@@ -1,5 +1,5 @@
 // Home dashboard
-const HomeScreen = ({ onNav }) => {
+const HomeScreen = ({ onNav, onEditTx, onReprint }) => {
   const state = window.Store.state;
   const [, force] = React.useReducer(x => x + 1, 0);
   const handleDeleteTx = async (t) => {
@@ -166,7 +166,7 @@ const HomeScreen = ({ onNav }) => {
               <th style={{width:80}}>품목수</th>
               <th className="num" style={{width:140}}>합계</th>
               <th style={{width:100}}>결제</th>
-              <th style={{width:100}}></th>
+              <th style={{width:150}}></th>
             </tr></thead>
             <tbody>
               {recentTx.length === 0 && <tr><td colSpan="6" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>거래 내역 없음 — 새 거래를 입력해 보세요</td></tr>}
@@ -185,7 +185,8 @@ const HomeScreen = ({ onNav }) => {
                     </td>
                     <td>
                       <div className="row" style={{gap:4}}>
-                        <button className="btn btn-sm btn-ghost" title="재인쇄"><Icons.Print size={16}/></button>
+                        <button className="btn btn-sm btn-ghost" title="수정" onClick={() => onEditTx && onEditTx(t)}>수정</button>
+                        <button className="btn btn-sm btn-ghost" title="재출력" onClick={() => onReprint && onReprint(t)}><Icons.Print size={16}/></button>
                         <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} title="거래 삭제" onClick={() => handleDeleteTx(t)}><Icons.Trash size={16}/></button>
                       </div>
                     </td>

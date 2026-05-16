@@ -88,21 +88,22 @@ const ItemAutocomplete = ({ value, onSelect, onChange, autoFocus }) => {
 
 const blankRow = () => ({ key: Math.random().toString(36).slice(2), itemId: null, itemName: '', spec: '', qty: '', price: 0 });
 
-const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
+const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const state = window.Store.state;
-  const [customerId, setCustomerId] = useState(prefill?.customerId || (state.customers[0]?.id || 1));
-  const [date] = useState(window.todayKey());
+  const isEdit = !!editTx;
+  const [customerId, setCustomerId] = useState(editTx?.customerId || (state.customers[0]?.id || 1));
+  const [date] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
-    if (prefill?.lines && prefill.lines.length) {
-      const r = prefill.lines.map((l, i) => {
+    if (editTx?.lines && editTx.lines.length) {
+      const r = editTx.lines.map((l, i) => {
         const it = window.findItem(l.itemId);
         return {
-          key: 'p' + i,
+          key: 'e' + i,
           itemId: l.itemId,
-          itemName: (it ? it.name + (it.variety ? ` · ${it.variety}` : '') : ''),
-          spec: it?.spec || '',
+          itemName: l.name || (it ? it.name + (it.variety ? ` · ${it.variety}` : '') : ''),
+          spec: l.spec || it?.spec || '',
           qty: l.qty,
-          price: window.priceFor(it, window.findCustomer(prefill.customerId))
+          price: l.price,
         };
       });
       r.push(blankRow());
@@ -110,9 +111,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
     }
     return [blankRow()];
   });
-  const [payment, setPayment] = useState('cash');
-  const [memo, setMemo] = useState('');
-  const [vatIncluded, setVatIncluded] = useState(false);
+  const [payment, setPayment] = useState(editTx?.method || 'cash');
+  const [memo, setMemo] = useState(editTx?.memo || '');
+  const [vatIncluded, setVatIncluded] = useState(!!editTx?.vatIncluded);
   const [savedToast, setSavedToast] = useState(false);
 
   const updateRow = (key, patch) => {
@@ -135,46 +136,85 @@ const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
 
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
 
-  const buildPayload = () => ({
-    id: state.nextTransactionId,
-    date,
-    customerId,
-    subtotal,
-    vat,
-    total,
-    paid: payment === 'credit' ? 0 : total,
-    method: payment,
-    items: finalRows().length,
-    lines: finalRows().map(r => ({ itemId: r.itemId, name: r.itemName, spec: r.spec, qty: Number(r.qty), price: Number(r.price), lineTotal: Number(r.qty) * Number(r.price) })),
-    memo,
-    vatIncluded,
-    createdAt: new Date().toISOString()
-  });
+  const lineData = () => finalRows().map(r => ({
+    itemId: r.itemId, name: r.itemName, spec: r.spec,
+    qty: Number(r.qty), price: Number(r.price), lineTotal: Number(r.qty) * Number(r.price)
+  }));
+
+  // 거래의 재고/미수금 효과를 적용(+1) 또는 되돌림(-1)
+  const applyEffects = (tx, sign) => {
+    for (const l of (tx.lines || [])) {
+      const it = window.findItem(l.itemId);
+      if (it) it.stock = Math.max(0, (it.stock || 0) - sign * Number(l.qty));
+    }
+    if (tx.method === 'credit') {
+      const c = window.findCustomer(tx.customerId);
+      if (c) {
+        const outstanding = Math.max(0, (tx.total || 0) - (tx.paid || 0));
+        c.due = Math.max(0, (c.due || 0) + sign * outstanding);
+      }
+    }
+  };
 
   const persist = async () => {
-    const tx = buildPayload();
+    const lines = lineData();
+    if (isEdit) {
+      const old = state.transactions.find(t => t.id === editTx.id);
+      if (old) applyEffects(old, -1); // 기존 효과 원복
+      const keepPaid = old && old.method === 'credit'
+        ? Math.min(old.paid || 0, total)
+        : (payment === 'credit' ? 0 : total);
+      const tx = {
+        ...old,
+        id: editTx.id,
+        date,
+        customerId,
+        subtotal, vat, total,
+        method: payment,
+        paid: payment === 'credit' ? keepPaid : total,
+        items: lines.length,
+        lines,
+        memo,
+        vatIncluded,
+        updatedAt: new Date().toISOString(),
+      };
+      const idx = state.transactions.findIndex(t => t.id === editTx.id);
+      if (idx >= 0) state.transactions[idx] = tx; else state.transactions.unshift(tx);
+      applyEffects(tx, +1); // 새 효과 적용
+      for (const l of lines) {
+        const i = state.recentItems.indexOf(l.itemId);
+        if (i >= 0) state.recentItems.splice(i, 1);
+        state.recentItems.unshift(l.itemId);
+      }
+      state.recentItems = state.recentItems.slice(0, 8);
+      const c = window.findCustomer(customerId);
+      if (c) c.last = date;
+      await window.Store.commit();
+      return tx;
+    }
+    const tx = {
+      id: state.nextTransactionId,
+      date, customerId, subtotal, vat, total,
+      paid: payment === 'credit' ? 0 : total,
+      method: payment,
+      items: lines.length,
+      lines,
+      memo, vatIncluded,
+      createdAt: new Date().toISOString(),
+    };
     state.transactions.unshift(tx);
     state.nextTransactionId = tx.id + 1;
-    // recent items
-    for (const l of tx.lines) {
+    for (const l of lines) {
       const idx = state.recentItems.indexOf(l.itemId);
       if (idx >= 0) state.recentItems.splice(idx, 1);
       state.recentItems.unshift(l.itemId);
       const it = window.findItem(l.itemId);
-      if (it) {
-        it.useCount = (it.useCount || 0) + 1;
-        it.stock = Math.max(0, (it.stock || 0) - Number(l.qty));
-        state.stockMovements = state.stockMovements || [];
-        state.stockMovements.unshift({ itemId: it.id, change: -Number(l.qty), type: 'sale', refId: tx.id, at: new Date().toISOString() });
-      }
+      if (it) it.useCount = (it.useCount || 0) + 1;
     }
     state.recentItems = state.recentItems.slice(0, 8);
-    // customer due/last
+    applyEffects(tx, +1);
     const c = window.findCustomer(customerId);
-    if (c) {
-      c.last = date;
-      if (payment === 'credit') c.due = (c.due || 0) + total;
-    }
+    if (c) c.last = date;
     await window.Store.commit();
     return tx;
   };
@@ -200,6 +240,12 @@ const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
       txId: tx.id,
     });
   };
+
+  useEffect(() => {
+    const onSaveKey = () => { handleSave(); };
+    document.addEventListener('saeipari:save', onSaveKey);
+    return () => document.removeEventListener('saeipari:save', onSaveKey);
+  });
 
   const handleCancel = () => {
     if (confirm('입력 중인 거래를 취소하시겠습니까?')) {
@@ -241,7 +287,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
     <div className="entry-grid">
       <div className="card">
         <div className="card-head">
-          <h2>새 거래명세서</h2>
+          <h2>{isEdit ? `거래 수정 · #${editTx.id}` : '새 거래명세서'}</h2>
           <div className="row" style={{gap:8}}>
             <span className="muted" style={{fontSize:13}}>저장 단축키</span>
             <span className="keyhint">Ctrl+S</span>
@@ -332,10 +378,10 @@ const EntryScreen = ({ onPrint, onSaved, onNav, prefill }) => {
             <div><span className="lbl">합계</span> <span className="val grand mono">{window.fmt(total)}원</span></div>
           </div>
           <div className="row" style={{gap:10}}>
-            <button className="btn btn-lg" onClick={handleCancel}>취소</button>
-            <button className="btn btn-lg" onClick={handleSave}><Icons.Save size={18}/> 저장</button>
+            <button className="btn btn-lg" onClick={isEdit ? () => onSaved && onSaved() : handleCancel}>{isEdit ? '닫기' : '취소'}</button>
+            <button className="btn btn-lg" onClick={handleSave}><Icons.Save size={18}/> {isEdit ? '수정 저장' : '저장'}</button>
             <button className="btn btn-lg btn-primary" onClick={handleSaveAndPrint}>
-              <Icons.Print size={18}/> 저장 후 인쇄
+              <Icons.Print size={18}/> {isEdit ? '저장 후 재출력' : '저장 후 인쇄'}
             </button>
           </div>
         </div>
