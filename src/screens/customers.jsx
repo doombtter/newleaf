@@ -1,5 +1,5 @@
 // 거래처 관리
-const CustomersScreen = ({ onNav }) => {
+const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
   const state = window.Store.state;
   const [selectedId, setSelectedId] = React.useState(state.customers[0]?.id || 1);
   const [tab, setTab] = React.useState('history');
@@ -38,6 +38,27 @@ const CustomersScreen = ({ onNav }) => {
     }
     await window.Store.commit();
     setPaymentOpen(false);
+    force();
+  };
+
+  const handleDeleteCustomer = async () => {
+    const txCount = state.transactions.filter(t => t.customerId === c.id).length;
+    const warn = txCount > 0
+      ? `'${c.name}' 거래처를 삭제하시겠습니까?\n관련 거래 ${txCount}건은 남지만 거래처 표시는 사라집니다.`
+      : `'${c.name}' 거래처를 삭제하시겠습니까?`;
+    if (!confirm(warn)) return;
+    window.removeCustomer(c.id);
+    await window.Store.commit();
+    const next = state.customers[0];
+    setSelectedId(next ? next.id : null);
+    setEditing(false);
+    force();
+  };
+
+  const handleDeleteTransaction = async (t) => {
+    if (!confirm(`#${t.id} 거래(${t.date}, ${window.fmt(t.total)}원)를 삭제하시겠습니까?\n재고와 미수금이 자동으로 원복됩니다.`)) return;
+    window.removeTransaction(t.id);
+    await window.Store.commit();
     force();
   };
 
@@ -106,6 +127,7 @@ const CustomersScreen = ({ onNav }) => {
             </div>
             <div className="row" style={{gap:8}}>
               <button className="btn btn-sm" onClick={() => setEditing(true)}>정보 수정</button>
+              <button className="btn btn-sm" style={{color:'var(--danger)'}} onClick={() => handleDeleteCustomer()}><Icons.Trash size={14}/> 삭제</button>
               <button className="btn btn-sm btn-primary" onClick={() => setPaymentOpen(true)}><Icons.Wallet size={16}/> 수금 입력</button>
             </div>
           </div>
@@ -145,7 +167,7 @@ const CustomersScreen = ({ onNav }) => {
                   <th style={{width:90}}>거래일</th><th>품목 요약</th>
                   <th className="num" style={{width:140}}>합계</th>
                   <th style={{width:100}}>결제</th>
-                  <th style={{width:80}}></th>
+                  <th style={{width:150}}></th>
                 </tr></thead>
                 <tbody>
                   {txs.length === 0 && <tr><td colSpan="5" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>거래 이력 없음</td></tr>}
@@ -159,7 +181,13 @@ const CustomersScreen = ({ onNav }) => {
                         {t.method === 'transfer' && <span className="tag tag-green">이체</span>}
                         {t.method === 'credit' && <span className="tag tag-warn">외상</span>}
                       </td>
-                      <td><button className="btn btn-sm btn-ghost"><Icons.Print size={14}/></button></td>
+                      <td>
+                        <div className="row" style={{gap:4}}>
+                          <button className="btn btn-sm btn-ghost" title="수정" onClick={() => onEditTx && onEditTx(t)}>수정</button>
+                          <button className="btn btn-sm btn-ghost" title="재출력" onClick={() => onReprint && onReprint(t)}><Icons.Print size={14}/></button>
+                          <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} title="거래 삭제" onClick={() => handleDeleteTransaction(t)}><Icons.Trash size={14}/></button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {txs.length > 0 && (

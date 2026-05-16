@@ -8,12 +8,16 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "renderer": "node scripts/build-renderer.js",
+    "assets": "node scripts/generate-icon.js && node scripts/build-renderer.js",
+    "prestart": "node scripts/build-renderer.js",
     "start": "electron .",
+    "predev": "node scripts/build-renderer.js",
     "dev": "electron . --enable-logging",
     "icon": "node scripts/generate-icon.js",
-    "prebuild": "node scripts/generate-icon.js",
-    "prebuild:win": "node scripts/generate-icon.js",
-    "prebuild:portable": "node scripts/generate-icon.js",
+    "prebuild": "node scripts/generate-icon.js && node scripts/build-renderer.js",
+    "prebuild:win": "node scripts/generate-icon.js && node scripts/build-renderer.js",
+    "prebuild:portable": "node scripts/generate-icon.js && node scripts/build-renderer.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win --x64",
     "build:portable": "electron-builder --win portable --x64"
@@ -30,7 +34,8 @@
       "main.js",
       "preload.js",
       "src/**/*",
-      "assets/**/*"
+      "assets/**/*",
+      "!src/vendor/babel.min.js"
     ],
     "directories": {
       "output": "dist",

@@ -4,6 +4,7 @@ const InventoryScreen = () => {
   const [filter, setFilter] = React.useState('all');
   const [editing, setEditing] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
+  const [presetOpen, setPresetOpen] = React.useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
 
   let items = state.items;
@@ -21,6 +22,13 @@ const InventoryScreen = () => {
     await window.Store.commit();
     setEditing(null);
     setCreating(false);
+    force();
+  };
+
+  const handleDelete = async (it) => {
+    if (!confirm(`'${it.name}${it.variety ? ' · ' + it.variety : ''} (${it.spec})' 품목을 삭제하시겠습니까?\n과거 거래 내역의 품목명은 그대로 보존됩니다.`)) return;
+    window.removeItem(it.id);
+    await window.Store.commit();
     force();
   };
 
@@ -59,6 +67,7 @@ const InventoryScreen = () => {
             </div>
           </div>
           <div className="row" style={{gap:8}}>
+            <button className="btn btn-sm" onClick={() => setPresetOpen(true)}><Icons.Settings size={14}/> 추천 공수 편집</button>
             <button className="btn btn-sm btn-primary" onClick={() => { setCreating(true); setEditing(blank()); }}><Icons.Plus size={14}/> 신규 품목</button>
           </div>
         </div>
@@ -73,7 +82,7 @@ const InventoryScreen = () => {
               <th className="num" style={{width:80}}>육묘일</th>
               <th className="num" style={{width:80}}>판매빈도</th>
               <th style={{width:80}}>상태</th>
-              <th style={{width:80}}></th>
+              <th style={{width:110}}></th>
             </tr></thead>
             <tbody>
               {items.map(it => {
@@ -103,7 +112,12 @@ const InventoryScreen = () => {
                           ? <span className="tag tag-warn">부족</span>
                           : <span className="tag tag-green">정상</span>}
                     </td>
-                    <td><button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button></td>
+                    <td>
+                      <div className="row" style={{gap:4}}>
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button>
+                        <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} onClick={() => handleDelete(it)} title="삭제"><Icons.Trash size={14}/></button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -113,15 +127,21 @@ const InventoryScreen = () => {
       </div>
 
       {editing && <ItemEditModal item={editing} creating={creating} onSave={handleSave} onClose={() => { setEditing(null); setCreating(false); }}/>}
+      {presetOpen && <TrayPresetModal onClose={() => setPresetOpen(false)} onSaved={force}/>}
     </div>
   );
 };
 
 const ItemEditModal = ({ item, creating, onSave, onClose }) => {
   const [form, setForm] = React.useState({ ...item });
+  const submit = () => {
+    if (!form.name || !form.name.trim()) { alert('품목명을 입력해 주세요.'); return; }
+    onSave(form);
+  };
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}>
+      <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}
+        onKeyDown={e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); submit(); } }}>
         <div className="modal-head">
           <h3><Icons.Box size={16}/> &nbsp; {creating ? '신규 품목 등록' : '품목 정보 수정'}</h3>
           <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
@@ -130,10 +150,17 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
           <div className="field" style={{gridColumn:'span 2'}}><label>품목명</label><input className="input" value={form.name} onChange={e=>setForm({...form, name:e.target.value})}/></div>
           <div className="field"><label>품종</label><input className="input" value={form.variety||''} onChange={e=>setForm({...form, variety:e.target.value})}/></div>
           <div className="field"><label>규격</label><input className="input" value={form.spec||''} onChange={e=>setForm({...form, spec:e.target.value})}/></div>
-          <div className="field"><label>트레이 공수</label>
-            <select className="select" value={form.tray||50} onChange={e=>setForm({...form, tray:Number(e.target.value), spec: e.target.value+'구'})}>
-              {[50,72,105,128,200].map(n => <option key={n} value={n}>{n}공</option>)}
-            </select>
+          <div className="field"><label>트레이 공수 (직접 입력)</label>
+            <input className="input mono" type="number" min="1" list="tray-presets"
+              value={form.tray||''}
+              onChange={e=>{
+                const n = Number(e.target.value) || 0;
+                setForm({...form, tray:n, spec: n ? n+'구' : ''});
+              }}
+              placeholder="예: 50"/>
+            <datalist id="tray-presets">
+              {window.getTrayPresets().map(n => <option key={n} value={n}/>)}
+            </datalist>
           </div>
           <div className="field"><label>기본 단가 (원)</label><input className="input mono" value={form.price||0} onChange={e=>setForm({...form, price:Number(e.target.value)||0})}/></div>
           <div className="field"><label>현재 재고 (트레이)</label><input className="input mono" value={form.stock||0} onChange={e=>setForm({...form, stock:Number(e.target.value)||0})}/></div>
@@ -143,7 +170,70 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
         </div>
         <div className="row" style={{justifyContent:'flex-end', gap:8, padding:16, background:'#FBF8F0', borderTop:'1px solid var(--line)'}}>
           <button className="btn" onClick={onClose}>취소</button>
-          <button className="btn btn-primary" onClick={()=>onSave(form)}><Icons.Save size={16}/> 저장</button>
+          <button className="btn btn-primary" onClick={submit}><Icons.Save size={16}/> 저장</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TrayPresetModal = ({ onClose, onSaved }) => {
+  const [list, setList] = React.useState(() => window.getTrayPresets().slice());
+  const [val, setVal] = React.useState('');
+
+  const add = () => {
+    const n = Number(val);
+    if (!n || n < 1) return;
+    if (list.includes(n)) { setVal(''); return; }
+    setList([...list, n].sort((a, b) => a - b));
+    setVal('');
+  };
+  const remove = (n) => setList(list.filter(x => x !== n));
+  const reset = () => setList(window.DEFAULT_TRAY_PRESETS.slice());
+
+  const save = async () => {
+    window.Store.state.trayPresets = list.slice().sort((a, b) => a - b);
+    await window.Store.commit();
+    onSaved && onSaved();
+    onClose();
+  };
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{maxWidth:460}} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3><Icons.Settings size={16}/> &nbsp; 추천 트레이 공수 편집</h3>
+          <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
+        </div>
+        <div style={{padding:24, background:'#fff'}}>
+          <div className="muted" style={{fontSize:13, marginBottom:14}}>
+            품목 등록·파종 등록 시 입력칸에 추천으로 뜨는 공수 목록입니다.
+          </div>
+          <div className="row" style={{gap:8, marginBottom:16}}>
+            <input className="input mono" type="number" min="1" value={val}
+              onChange={e => setVal(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') add(); }}
+              placeholder="공수 입력 후 추가" style={{flex:1}}/>
+            <button className="btn btn-primary" onClick={add}><Icons.Plus size={16}/> 추가</button>
+          </div>
+          <div className="row" style={{flexWrap:'wrap', gap:8, minHeight:40}}>
+            {list.length === 0 && <span className="muted" style={{fontSize:13}}>목록이 비어 있습니다.</span>}
+            {list.map(n => (
+              <span key={n} className="tag tag-neutral" style={{fontSize:14, padding:'8px 10px'}}>
+                {n}구
+                <button className="icon-btn" style={{width:20, height:20, color:'var(--ink-soft)'}} onClick={() => remove(n)} title="삭제">
+                  <Icons.X size={14}/>
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="row" style={{justifyContent:'space-between', gap:8, padding:16, background:'#FBF8F0', borderTop:'1px solid var(--line)'}}>
+          <button className="btn" onClick={reset}>기본값 복원</button>
+          <div className="row" style={{gap:8}}>
+            <button className="btn" onClick={onClose}>취소</button>
+            <button className="btn btn-primary" onClick={save}><Icons.Save size={16}/> 저장</button>
+          </div>
         </div>
       </div>
     </div>

@@ -78,9 +78,9 @@ function createWindow() {
     {
       label: '파일',
       submenu: [
-        { label: '새 거래 (Ctrl+N)', accelerator: 'Ctrl+N', click: () => mainWindow?.webContents.send('shortcut', 'new') },
-        { label: '저장 (Ctrl+S)', accelerator: 'Ctrl+S', click: () => mainWindow?.webContents.send('shortcut', 'save') },
-        { label: '인쇄 (Ctrl+P)', accelerator: 'Ctrl+P', click: () => mainWindow?.webContents.print() },
+        { label: '새 거래 (Ctrl+N)', click: () => mainWindow?.webContents.send('shortcut', 'new') },
+        { label: '저장 (Ctrl+S)', click: () => mainWindow?.webContents.send('shortcut', 'save') },
+        { label: '거래명세서 인쇄 (Ctrl+P)', click: () => mainWindow?.webContents.send('shortcut', 'print') },
         { type: 'separator' },
         { label: '데이터 폴더 열기', click: () => shell.openPath(USER_DATA) },
         { label: '지금 백업', click: () => { const p = backupNow(); if (p) dialog.showMessageBox(mainWindow, { message: '백업 완료', detail: p }); } },

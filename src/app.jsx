@@ -23,25 +23,37 @@ const App = () => {
   const [page, setPage] = React.useState('home');
   const [invoice, setInvoice] = React.useState(null);
   const [entryKey, setEntryKey] = React.useState(0);
+  const [editTx, setEditTx] = React.useState(null);
+  const invoiceRef = React.useRef(null);
   const today = window.todayLabel();
 
+  const newEntry = () => { setEditTx(null); setEntryKey(k => k + 1); setPage('entry'); };
+  const openEdit = (tx) => { setEditTx(tx); setEntryKey(k => k + 1); setPage('entry'); };
+  const reprint = (tx) => setInvoice(window.txToInvoice(tx));
+  React.useEffect(() => { invoiceRef.current = invoice; }, [invoice]);
+
   React.useEffect(() => {
+    const doPrint = () => {
+      if (invoiceRef.current) { window.print(); }
+      else { alert('인쇄는 거래명세서 미리보기에서만 가능합니다.\n거래 입력에서 "저장 후 인쇄"를 누르거나,\n홈·거래처의 거래 목록에서 "재출력"을 선택하세요.'); }
+    };
     if (window.saeipari?.onShortcut) {
       window.saeipari.onShortcut((key) => {
-        if (key === 'new') { setPage('entry'); setEntryKey(k => k + 1); }
-        else if (key === 'save') { document.dispatchEvent(new CustomEvent('saeipari:save')); }
+        if (key === 'new') newEntry();
+        else if (key === 'save') document.dispatchEvent(new CustomEvent('saeipari:save'));
+        else if (key === 'print') doPrint();
       });
     }
     const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
-        e.preventDefault(); setPage('entry'); setEntryKey(k => k + 1);
-      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') { e.preventDefault(); newEntry(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') { e.preventDefault(); doPrint(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); document.dispatchEvent(new CustomEvent('saeipari:save')); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const onSaved = () => { setEntryKey(k => k + 1); setPage('home'); };
+  const onSaved = () => { setEditTx(null); setEntryKey(k => k + 1); setPage('home'); };
 
   return (
     <div className="app">
@@ -82,9 +94,9 @@ const App = () => {
           </div>
         </div>
         <div className="content">
-          {page === 'home' && <HomeScreen onNav={setPage}/>}
-          {page === 'entry' && <EntryScreen key={entryKey} onPrint={(d) => setInvoice(d)} onSaved={onSaved} onNav={setPage}/>}
-          {page === 'customers' && <CustomersScreen onNav={setPage}/>}
+          {page === 'home' && <HomeScreen onNav={setPage} onEditTx={openEdit} onReprint={reprint}/>}
+          {page === 'entry' && <EntryScreen key={entryKey} editTx={editTx} onPrint={(d) => setInvoice(d)} onSaved={onSaved} onNav={setPage}/>}
+          {page === 'customers' && <CustomersScreen onNav={setPage} onEditTx={openEdit} onReprint={reprint}/>}
           {page === 'inventory' && <InventoryScreen/>}
           {page === 'schedule' && <ScheduleScreen/>}
           {page === 'stats' && <StatsScreen/>}
@@ -97,4 +109,6 @@ const App = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+window.__renderApp = () => {
+  ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+};

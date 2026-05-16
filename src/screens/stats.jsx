@@ -30,14 +30,26 @@ const StatsScreen = () => {
   const state = window.Store.state;
   const [period, setPeriod] = React.useState('month');
 
-  const totalSales = state.transactions.reduce((a, t) => a + (t.total || 0), 0);
-  const totalPaid = state.transactions.reduce((a, t) => a + (t.paid || 0), 0);
-  const totalDue = state.customers.reduce((a, c) => a + (c.due || 0), 0);
-  const txCount = state.transactions.length;
+  const toDate = (s) => { const [y, m, d] = (s || '').split('.').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+  const now = new Date();
+  const rangeStart = (() => {
+    if (period === 'week') { const d = new Date(now); d.setDate(d.getDate() - 6); d.setHours(0,0,0,0); return d; }
+    if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+    if (period === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    return new Date(now.getFullYear(), 0, 1); // year
+  })();
+  const periodLabel = { week: '최근 7일', month: '이번 달', quarter: '이번 분기', year: '올해' }[period];
+  const inRange = (dateStr) => { const dt = toDate(dateStr); return dt >= rangeStart && dt <= now; };
+  const txns = state.transactions.filter(t => inRange(t.date));
 
-  // 품목별 집계 (lines가 비어있는 시드는 가상의 균등 분배)
+  const totalSales = txns.reduce((a, t) => a + (t.total || 0), 0);
+  const totalPaid = txns.reduce((a, t) => a + (t.paid || 0), 0);
+  const totalDue = state.customers.reduce((a, c) => a + (c.due || 0), 0);
+  const txCount = txns.length;
+
+  // 품목별 집계
   const itemSalesMap = {};
-  state.transactions.forEach(t => {
+  txns.forEach(t => {
     if (t.lines && t.lines.length) {
       t.lines.forEach(l => {
         const it = window.findItem(l.itemId);
@@ -52,13 +64,38 @@ const StatsScreen = () => {
 
   // 거래처별 집계
   const custSalesMap = {};
-  state.transactions.forEach(t => {
+  txns.forEach(t => {
     custSalesMap[t.customerId] = (custSalesMap[t.customerId] || 0) + (t.total || 0);
   });
   const customerSales = Object.entries(custSalesMap)
     .map(([id, amt]) => ({ name: window.findCustomer(Number(id))?.name || '—', amt }))
     .sort((a, b) => b.amt - a.amt).slice(0, 8);
   const maxCust = Math.max(...customerSales.map(i => i.amt), 1);
+
+  // 매출 추이: 주/월은 일별, 분기/년은 월별
+  const pad = (n) => String(n).padStart(2, '0');
+  const series = (() => {
+    const out = [];
+    if (period === 'quarter' || period === 'year') {
+      const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+      while (cur <= now) {
+        const y = cur.getFullYear(), m = cur.getMonth();
+        const sum = txns.filter(t => { const d = toDate(t.date); return d.getFullYear() === y && d.getMonth() === m; })
+          .reduce((a, t) => a + (t.total || 0), 0);
+        out.push([`${pad(m + 1)}월`, sum]);
+        cur.setMonth(cur.getMonth() + 1);
+      }
+    } else {
+      const cur = new Date(rangeStart);
+      while (cur <= now) {
+        const key = `${cur.getFullYear()}.${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`;
+        const sum = txns.filter(t => t.date === key).reduce((a, t) => a + (t.total || 0), 0);
+        out.push([`${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`, sum]);
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+    return out.length ? out : [['', 0]];
+  })();
 
   const exportCSV = (filename, headers, rows) => {
     const BOM = '﻿';
@@ -80,20 +117,20 @@ const StatsScreen = () => {
 
   const exports = [
     {
-      title: '거래 내역', desc: '기간 내 모든 거래', file: `transactions_${window.todayKey()}.csv`,
-      run: () => exportCSV(`transactions_${window.todayKey()}.csv`,
+      title: '거래 내역', desc: `${periodLabel} 거래`, file: `transactions_${period}_${window.todayKey()}.csv`,
+      run: () => exportCSV(`transactions_${period}_${window.todayKey()}.csv`,
         ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'],
-        state.transactions.map(t => {
+        txns.map(t => {
           const c = window.findCustomer(t.customerId);
           return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, (t.total - (t.paid || 0)), t.memo || ''];
         }))
     },
     {
-      title: '거래처별 집계', desc: '매출/미수금', file: `customers_${window.todayKey()}.csv`,
-      run: () => exportCSV(`customers_${window.todayKey()}.csv`,
+      title: '거래처별 집계', desc: `${periodLabel} 매출/미수금`, file: `customers_${period}_${window.todayKey()}.csv`,
+      run: () => exportCSV(`customers_${period}_${window.todayKey()}.csv`,
         ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'],
         state.customers.map(c => {
-          const txs = state.transactions.filter(t => t.customerId === c.id);
+          const txs = txns.filter(t => t.customerId === c.id);
           return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a,t)=>a+(t.total||0),0), c.due || 0];
         }))
     },
@@ -163,8 +200,8 @@ const StatsScreen = () => {
             </div>
           </div>
 
-          <div className="section-title"><h2>일별 매출 추이 (최근 14일)</h2></div>
-          <Sparkline data={state.dailyRevenue || []}/>
+          <div className="section-title"><h2>매출 추이 · {periodLabel}</h2></div>
+          <Sparkline data={series}/>
         </div>
       </div>
 

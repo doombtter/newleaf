@@ -80,12 +80,68 @@ window.seedFactory = () => ({
   monthlyPaid: 0,
   monthlyDue: 0,
   dailyRevenue: [],
+  trayPresets: [32, 40, 50, 72, 98, 105, 128, 162, 200, 288],
 });
+
+window.DEFAULT_TRAY_PRESETS = [32, 40, 50, 72, 98, 105, 128, 162, 200, 288];
+// 기존 데이터(추천 목록 필드 없음) 대비 안전 접근자
+window.getTrayPresets = () => {
+  const s = window.Store?.state;
+  if (s && !Array.isArray(s.trayPresets)) s.trayPresets = window.DEFAULT_TRAY_PRESETS.slice();
+  return s ? s.trayPresets : window.DEFAULT_TRAY_PRESETS.slice();
+};
 
 
 // Convenience accessors against Store.state
 window.findItem = (id) => (window.Store?.state?.items || []).find(i => i.id === id);
 window.findCustomer = (id) => (window.Store?.state?.customers || []).find(c => c.id === id);
+
+// 삭제 (이력 정합성 보정 포함)
+window.removeItem = (id) => {
+  const s = window.Store.state;
+  s.items = s.items.filter(i => i.id !== id);
+  s.recentItems = (s.recentItems || []).filter(x => x !== id);
+  s.favoriteItems = (s.favoriteItems || []).filter(x => x !== id);
+};
+window.removeCustomer = (id) => {
+  const s = window.Store.state;
+  s.customers = s.customers.filter(c => c.id !== id);
+};
+window.removeTransaction = (id) => {
+  const s = window.Store.state;
+  const tx = s.transactions.find(t => t.id === id);
+  if (!tx) return;
+  // 재고 복원
+  (tx.lines || []).forEach(l => {
+    const it = window.findItem(l.itemId);
+    if (it) it.stock = (it.stock || 0) + Number(l.qty || 0);
+  });
+  // 외상 미수금 환원
+  if (tx.method === 'credit') {
+    const c = window.findCustomer(tx.customerId);
+    if (c) {
+      const outstanding = Math.max(0, (tx.total || 0) - (tx.paid || 0));
+      c.due = Math.max(0, (c.due || 0) - outstanding);
+    }
+  }
+  s.transactions = s.transactions.filter(t => t.id !== id);
+};
+
+// 저장된 거래 → 거래명세서 미리보기 데이터
+window.txToInvoice = (tx) => {
+  if (!tx) return null;
+  return {
+    customer: window.findCustomer(tx.customerId),
+    date: tx.date,
+    rows: (tx.lines || []).map(l => ({ itemId: l.itemId, itemName: l.name, spec: l.spec, qty: l.qty, price: l.price })),
+    subtotal: tx.subtotal,
+    vat: tx.vat,
+    total: tx.total,
+    payment: tx.method,
+    memo: tx.memo,
+    txId: tx.id,
+  };
+};
 
 window.tierLabel = (tier) => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = (tier) => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
