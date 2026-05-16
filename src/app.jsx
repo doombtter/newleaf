@@ -97,4 +97,6 @@ const App = () => {
   );
 };
 
-ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+window.__renderApp = () => {
+  ReactDOM.createRoot(document.getElementById('app')).render(<App/>);
+};

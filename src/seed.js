@@ -96,6 +96,37 @@ window.getTrayPresets = () => {
 window.findItem = (id) => (window.Store?.state?.items || []).find(i => i.id === id);
 window.findCustomer = (id) => (window.Store?.state?.customers || []).find(c => c.id === id);
 
+// 삭제 (이력 정합성 보정 포함)
+window.removeItem = (id) => {
+  const s = window.Store.state;
+  s.items = s.items.filter(i => i.id !== id);
+  s.recentItems = (s.recentItems || []).filter(x => x !== id);
+  s.favoriteItems = (s.favoriteItems || []).filter(x => x !== id);
+};
+window.removeCustomer = (id) => {
+  const s = window.Store.state;
+  s.customers = s.customers.filter(c => c.id !== id);
+};
+window.removeTransaction = (id) => {
+  const s = window.Store.state;
+  const tx = s.transactions.find(t => t.id === id);
+  if (!tx) return;
+  // 재고 복원
+  (tx.lines || []).forEach(l => {
+    const it = window.findItem(l.itemId);
+    if (it) it.stock = (it.stock || 0) + Number(l.qty || 0);
+  });
+  // 외상 미수금 환원
+  if (tx.method === 'credit') {
+    const c = window.findCustomer(tx.customerId);
+    if (c) {
+      const outstanding = Math.max(0, (tx.total || 0) - (tx.paid || 0));
+      c.due = Math.max(0, (c.due || 0) - outstanding);
+    }
+  }
+  s.transactions = s.transactions.filter(t => t.id !== id);
+};
+
 window.tierLabel = (tier) => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = (tier) => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
 window.priceFor = (item, customer) => {

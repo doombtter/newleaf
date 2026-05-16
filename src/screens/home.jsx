@@ -1,6 +1,13 @@
 // Home dashboard
 const HomeScreen = ({ onNav }) => {
   const state = window.Store.state;
+  const [, force] = React.useReducer(x => x + 1, 0);
+  const handleDeleteTx = async (t) => {
+    if (!confirm(`#${t.id} 거래(${t.date}, ${window.fmt(t.total)}원)를 삭제하시겠습니까?\n재고와 미수금이 자동으로 원복됩니다.`)) return;
+    window.removeTransaction(t.id);
+    await window.Store.commit();
+    force();
+  };
   const today = window.todayKey();
   const tomorrow = (() => {
     const [y,m,d] = today.split('.').map(Number);
@@ -159,7 +166,7 @@ const HomeScreen = ({ onNav }) => {
               <th style={{width:80}}>품목수</th>
               <th className="num" style={{width:140}}>합계</th>
               <th style={{width:100}}>결제</th>
-              <th style={{width:60}}></th>
+              <th style={{width:100}}></th>
             </tr></thead>
             <tbody>
               {recentTx.length === 0 && <tr><td colSpan="6" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>거래 내역 없음 — 새 거래를 입력해 보세요</td></tr>}
@@ -176,7 +183,12 @@ const HomeScreen = ({ onNav }) => {
                       {t.method === 'transfer' && <span className="tag tag-green">이체</span>}
                       {t.method === 'credit' && <span className="tag tag-warn">외상</span>}
                     </td>
-                    <td><button className="btn btn-sm btn-ghost" title="재인쇄"><Icons.Print size={16}/></button></td>
+                    <td>
+                      <div className="row" style={{gap:4}}>
+                        <button className="btn btn-sm btn-ghost" title="재인쇄"><Icons.Print size={16}/></button>
+                        <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} title="거래 삭제" onClick={() => handleDeleteTx(t)}><Icons.Trash size={16}/></button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}

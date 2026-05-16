@@ -25,6 +25,13 @@ const InventoryScreen = () => {
     force();
   };
 
+  const handleDelete = async (it) => {
+    if (!confirm(`'${it.name}${it.variety ? ' · ' + it.variety : ''} (${it.spec})' 품목을 삭제하시겠습니까?\n과거 거래 내역의 품목명은 그대로 보존됩니다.`)) return;
+    window.removeItem(it.id);
+    await window.Store.commit();
+    force();
+  };
+
   const blank = () => ({ name: '', variety: '', tray: 50, spec: '50구', unit: 'tray', price: 15000, stock: 0, safety: 10, growing: 40, memo: '' });
 
   return (
@@ -75,7 +82,7 @@ const InventoryScreen = () => {
               <th className="num" style={{width:80}}>육묘일</th>
               <th className="num" style={{width:80}}>판매빈도</th>
               <th style={{width:80}}>상태</th>
-              <th style={{width:80}}></th>
+              <th style={{width:110}}></th>
             </tr></thead>
             <tbody>
               {items.map(it => {
@@ -105,7 +112,12 @@ const InventoryScreen = () => {
                           ? <span className="tag tag-warn">부족</span>
                           : <span className="tag tag-green">정상</span>}
                     </td>
-                    <td><button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button></td>
+                    <td>
+                      <div className="row" style={{gap:4}}>
+                        <button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button>
+                        <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} onClick={() => handleDelete(it)} title="삭제"><Icons.Trash size={14}/></button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
@@ -122,9 +134,14 @@ const InventoryScreen = () => {
 
 const ItemEditModal = ({ item, creating, onSave, onClose }) => {
   const [form, setForm] = React.useState({ ...item });
+  const submit = () => {
+    if (!form.name || !form.name.trim()) { alert('품목명을 입력해 주세요.'); return; }
+    onSave(form);
+  };
   return (
     <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}>
+      <div className="modal" style={{maxWidth:560}} onClick={e=>e.stopPropagation()}
+        onKeyDown={e => { if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); submit(); } }}>
         <div className="modal-head">
           <h3><Icons.Box size={16}/> &nbsp; {creating ? '신규 품목 등록' : '품목 정보 수정'}</h3>
           <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
@@ -153,7 +170,7 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
         </div>
         <div className="row" style={{justifyContent:'flex-end', gap:8, padding:16, background:'#FBF8F0', borderTop:'1px solid var(--line)'}}>
           <button className="btn" onClick={onClose}>취소</button>
-          <button className="btn btn-primary" onClick={()=>onSave(form)}><Icons.Save size={16}/> 저장</button>
+          <button className="btn btn-primary" onClick={submit}><Icons.Save size={16}/> 저장</button>
         </div>
       </div>
     </div>
