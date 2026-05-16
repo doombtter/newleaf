@@ -37,7 +37,7 @@
       "buildResources": "build"
     },
     "win": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -60,8 +60,8 @@
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "새이파리 육묘장 관리",
-      "installerIcon": "build/icon.png",
-      "uninstallerIcon": "build/icon.png",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "language": "1042"
     },
     "portable": {
