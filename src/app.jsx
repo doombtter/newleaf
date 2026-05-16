@@ -83,7 +83,7 @@ const App = () => {
         </div>
         <div className="content">
           {page === 'home' && <HomeScreen onNav={setPage}/>}
-          {page === 'entry' && <EntryScreen key={entryKey} onPrint={(d) => setInvoice(d)} onSaved={onSaved}/>}
+          {page === 'entry' && <EntryScreen key={entryKey} onPrint={(d) => setInvoice(d)} onSaved={onSaved} onNav={setPage}/>}
           {page === 'customers' && <CustomersScreen onNav={setPage}/>}
           {page === 'inventory' && <InventoryScreen/>}
           {page === 'schedule' && <ScheduleScreen/>}

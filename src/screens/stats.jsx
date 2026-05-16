@@ -47,15 +47,7 @@ const StatsScreen = () => {
       });
     }
   });
-  let itemSales = Object.entries(itemSalesMap).map(([name, amt]) => ({ name, amt })).sort((a, b) => b.amt - a.amt).slice(0, 8);
-  if (itemSales.length === 0) {
-    // fallback to seed-style demo data
-    itemSales = [
-      { name: '청양고추 50구', amt: 3240000 }, { name: '순한조생복합 50구', amt: 2880000 },
-      { name: '토마토 50구', amt: 1840000 }, { name: '오이 50구', amt: 1340000 },
-      { name: '상추 200구', amt: 980000 }, { name: '수박 50구', amt: 820000 },
-    ];
-  }
+  const itemSales = Object.entries(itemSalesMap).map(([name, amt]) => ({ name, amt })).sort((a, b) => b.amt - a.amt).slice(0, 8);
   const maxItem = Math.max(...itemSales.map(i => i.amt), 1);
 
   // 거래처별 집계
@@ -180,6 +172,7 @@ const StatsScreen = () => {
         <div className="card">
           <div className="card-head"><h2>품목별 매출 순위</h2></div>
           <div className="card-body">
+            {itemSales.length === 0 && <div className="muted" style={{padding:20}}>거래 데이터가 없습니다.</div>}
             {itemSales.map((it, i) => (
               <div key={i} className="bar-row">
                 <div className="name"><span className="muted mono" style={{marginRight:8}}>{i + 1}</span>{it.name}</div>

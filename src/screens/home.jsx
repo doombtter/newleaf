@@ -12,6 +12,8 @@ const HomeScreen = ({ onNav }) => {
   const dueCustomers = state.customers.filter(c => c.due > 0).sort((a,b) => b.due - a.due);
   const totalDue = dueCustomers.reduce((a,c) => a + c.due, 0);
   const recentTx = [...state.transactions].sort((a,b) => b.id - a.id).slice(0, 8);
+  const salesTotal = state.transactions.reduce((a,t) => a + (t.total || 0), 0);
+  const paidTotal = state.transactions.reduce((a,t) => a + (t.paid || 0), 0);
 
   const dueSummary = dueCustomers.slice(0, 3)
     .map(c => `${c.name.split(' ')[0]} ${window.fmt(c.due)}원`).join(' · ')
@@ -21,13 +23,13 @@ const HomeScreen = ({ onNav }) => {
     <div className="col" style={{gap:24}}>
       <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14}}>
         <div className="stat">
-          <div className="label">이번 달 매출</div>
-          <div className="value">{window.fmt(state.monthlyTotal)}원</div>
-          <div className="delta">전년 동월 대비 +12.4%</div>
+          <div className="label">누적 매출</div>
+          <div className="value">{window.fmt(salesTotal)}원</div>
+          <div className="delta muted">거래 {state.transactions.length}건</div>
         </div>
         <div className="stat">
-          <div className="label">이번 달 수금</div>
-          <div className="value" style={{color:'var(--green-800)'}}>{window.fmt(state.monthlyPaid)}원</div>
+          <div className="label">누적 수금</div>
+          <div className="value" style={{color:'var(--green-800)'}}>{window.fmt(paidTotal)}원</div>
           <div className="delta muted">결제완료 {state.transactions.filter(t=>t.method!=='credit').length}건 / 전체 {state.transactions.length}건</div>
         </div>
         <div className="stat warn">

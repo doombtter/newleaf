@@ -60,6 +60,17 @@ const CustomersScreen = ({ onNav }) => {
     force();
   };
 
+  if (state.customers.length === 0) {
+    return (
+      <div className="card">
+        <div className="card-body" style={{padding:60, textAlign:'center'}}>
+          <div className="muted" style={{fontSize:15, marginBottom:18}}>등록된 거래처가 없습니다.</div>
+          <button className="btn btn-primary" onClick={handleNew}><Icons.Plus size={16}/> 첫 거래처 등록</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="split-grid">
       <div className="list-card" style={{height: 'calc(100vh - 160px)', overflow:'hidden', display:'flex', flexDirection:'column'}}>
