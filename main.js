@@ -60,7 +60,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#F5F0E8',
     title: '새이파리 육묘장 관리',
-    icon: path.join(__dirname, 'build', 'icon.png'),
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

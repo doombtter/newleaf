@@ -10,6 +10,10 @@
   "scripts": {
     "start": "electron .",
     "dev": "electron . --enable-logging",
+    "icon": "node scripts/generate-icon.js",
+    "prebuild": "node scripts/generate-icon.js",
+    "prebuild:win": "node scripts/generate-icon.js",
+    "prebuild:portable": "node scripts/generate-icon.js",
     "build": "electron-builder",
     "build:win": "electron-builder --win --x64",
     "build:portable": "electron-builder --win portable --x64"
@@ -33,6 +37,7 @@
       "buildResources": "build"
     },
     "win": {
+      "icon": "build/icon.png",
       "target": [
         {
           "target": "nsis",
@@ -52,9 +57,11 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
+      "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
       "shortcutName": "새이파리 육묘장 관리",
+      "installerIcon": "build/icon.png",
+      "uninstallerIcon": "build/icon.png",
       "language": "1042"
     },
     "portable": {
