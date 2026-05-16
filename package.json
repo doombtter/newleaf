@@ -1,0 +1,64 @@
+{
+  "name": "saeipari",
+  "productName": "새이파리 육묘장 관리",
+  "version": "1.0.0",
+  "description": "새이파리 육묘장 관리 프로그램 (오프라인, 단일 PC)",
+  "main": "main.js",
+  "author": "새이파리",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enable-logging",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win --x64",
+    "build:portable": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.saeipari.manager",
+    "productName": "새이파리 육묘장 관리",
+    "asar": true,
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "새이파리-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "새이파리 육묘장 관리",
+      "language": "1042"
+    },
+    "portable": {
+      "artifactName": "새이파리-${version}-portable.${ext}"
+    }
+  }
+}

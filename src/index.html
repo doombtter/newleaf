@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval'; img-src 'self' data:; font-src 'self' data:;" />
+  <title>새이파리 육묘장 관리</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <div style="padding:80px; text-align:center; color:#8A8579; font-family:'Noto Sans KR',system-ui,sans-serif;">
+      불러오는 중…
+    </div>
+  </div>
+
+  <script src="vendor/react.min.js"></script>
+  <script src="vendor/react-dom.min.js"></script>
+  <script src="vendor/babel.min.js"></script>
+  <script src="store.js"></script>
+  <script src="seed.js"></script>
+
+  <script>
+    (async function () {
+      const SOURCES = [
+        'icons.jsx',
+        'screens/home.jsx',
+        'screens/entry.jsx',
+        'screens/invoice.jsx',
+        'screens/customers.jsx',
+        'screens/inventory.jsx',
+        'screens/schedule.jsx',
+        'screens/stats.jsx',
+        'screens/settings.jsx',
+        'app.jsx',
+      ];
+      try {
+        await window.Store.init(window.seedFactory);
+        for (const src of SOURCES) {
+          const res = await fetch(src);
+          if (!res.ok) throw new Error('failed to load ' + src);
+          const text = await res.text();
+          const out = Babel.transform(text, {
+            presets: [['react', { runtime: 'classic' }]],
+            sourceMaps: 'inline',
+            filename: src,
+          }).code;
+          const tag = document.createElement('script');
+          tag.text = out + '\n//# sourceURL=' + src;
+          document.body.appendChild(tag);
+        }
+      } catch (e) {
+        document.getElementById('app').innerHTML =
+          '<div style="padding:60px; font-family:sans-serif; color:#B0322C;"><h2>로드 실패</h2><pre>' +
+          (e && e.stack ? e.stack : String(e)) + '</pre></div>';
+        console.error(e);
+      }
+    })();
+  </script>
+</body>
+</html>
