@@ -22,7 +22,7 @@ const InvoicePage = ({ data, copy }) => {
               <tr><td className="k">대표자</td><td>{customer?.owner || ''}</td></tr>
               <tr><td className="k">사업장</td><td>{customer?.address || ''}</td></tr>
               <tr><td className="k">전화</td><td className="mono">{customer?.phone || ''}</td></tr>
-              <tr><td className="k">합계금액</td><td className="mono"><b>{window.fmt(total)}원</b> <span style={{color:'#666', fontSize:10, marginLeft:6}}>(VAT 포함)</span></td></tr>
+              <tr><td className="k">합계금액</td><td className="mono"><b>{window.fmt(total)}원</b> <span style={{color:'#666', fontSize:10, marginLeft:6}}>{(vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)'}</span></td></tr>
             </tbody>
           </table>
         </div>

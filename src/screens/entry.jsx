@@ -113,7 +113,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   });
   const [payment, setPayment] = useState(editTx?.method || 'cash');
   const [memo, setMemo] = useState(editTx?.memo || '');
-  const [vatIncluded, setVatIncluded] = useState(!!editTx?.vatIncluded);
+  const [hasVat, setHasVat] = useState(
+    editTx ? (editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0) : true
+  );
   const [savedToast, setSavedToast] = useState(false);
 
   const updateRow = (key, patch) => {
@@ -130,8 +132,8 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   });
 
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
-  const vat = vatIncluded ? Math.round(subtotal / 11) : Math.round(subtotal * 0.1);
-  const total = vatIncluded ? subtotal : subtotal + vat;
+  const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
+  const total = subtotal + vat;
   const customer = window.findCustomer(customerId);
 
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
@@ -175,7 +177,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
         items: lines.length,
         lines,
         memo,
-        vatIncluded,
+        hasVat,
         updatedAt: new Date().toISOString(),
       };
       const idx = state.transactions.findIndex(t => t.id === editTx.id);
@@ -199,7 +201,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
       method: payment,
       items: lines.length,
       lines,
-      memo, vatIncluded,
+      memo, hasVat,
       createdAt: new Date().toISOString(),
     };
     state.transactions.unshift(tx);
@@ -363,10 +365,11 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
                 <button className={payment === 'transfer' ? 'on' : ''} style={{flex:1}} onClick={() => setPayment('transfer')}>이체</button>
                 <button className={payment === 'credit' ? 'on' : ''} style={{flex:1}} onClick={() => setPayment('credit')}>외상</button>
               </div>
-              <label style={{marginTop:6, display:'flex', alignItems:'center', gap:6, fontSize:13}}>
-                <input type="checkbox" checked={vatIncluded} onChange={e => setVatIncluded(e.target.checked)}/>
-                부가세 포함 단가
-              </label>
+              <label style={{marginTop:10, marginBottom:4, fontSize:13, color:'var(--ink-soft)', fontWeight:500}}>부가세</label>
+              <div className="seg" style={{width:'100%'}}>
+                <button className={hasVat ? 'on' : ''} style={{flex:1}} onClick={() => setHasVat(true)}>부가세 있음 (10%)</button>
+                <button className={!hasVat ? 'on' : ''} style={{flex:1}} onClick={() => setHasVat(false)}>부가세 없음</button>
+              </div>
             </div>
           </div>
         </div>

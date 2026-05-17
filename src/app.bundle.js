@@ -907,7 +907,7 @@ const EntryScreen = ({
   });
   const [payment, setPayment] = useState(editTx?.method || 'cash');
   const [memo, setMemo] = useState(editTx?.memo || '');
-  const [vatIncluded, setVatIncluded] = useState(!!editTx?.vatIncluded);
+  const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : true);
   const [savedToast, setSavedToast] = useState(false);
   const updateRow = (key, patch) => {
     setRows(rs => {
@@ -924,8 +924,8 @@ const EntryScreen = ({
     return filtered.length === 0 ? [blankRow()] : filtered;
   });
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
-  const vat = vatIncluded ? Math.round(subtotal / 11) : Math.round(subtotal * 0.1);
-  const total = vatIncluded ? subtotal : subtotal + vat;
+  const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
+  const total = subtotal + vat;
   const customer = window.findCustomer(customerId);
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
   const lineData = () => finalRows().map(r => ({
@@ -970,7 +970,7 @@ const EntryScreen = ({
         items: lines.length,
         lines,
         memo,
-        vatIncluded,
+        hasVat,
         updatedAt: new Date().toISOString()
       };
       const idx = state.transactions.findIndex(t => t.id === editTx.id);
@@ -999,7 +999,7 @@ const EntryScreen = ({
       items: lines.length,
       lines,
       memo,
-      vatIncluded,
+      hasVat,
       createdAt: new Date().toISOString()
     };
     state.transactions.unshift(tx);
@@ -1283,17 +1283,30 @@ const EntryScreen = ({
     onClick: () => setPayment('credit')
   }, "\uC678\uC0C1")), /*#__PURE__*/React.createElement("label", {
     style: {
-      marginTop: 6,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 6,
-      fontSize: 13
+      marginTop: 10,
+      marginBottom: 4,
+      fontSize: 13,
+      color: 'var(--ink-soft)',
+      fontWeight: 500
     }
-  }, /*#__PURE__*/React.createElement("input", {
-    type: "checkbox",
-    checked: vatIncluded,
-    onChange: e => setVatIncluded(e.target.checked)
-  }), "\uBD80\uAC00\uC138 \uD3EC\uD568 \uB2E8\uAC00")))), /*#__PURE__*/React.createElement("div", {
+  }, "\uBD80\uAC00\uC138"), /*#__PURE__*/React.createElement("div", {
+    className: "seg",
+    style: {
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: hasVat ? 'on' : '',
+    style: {
+      flex: 1
+    },
+    onClick: () => setHasVat(true)
+  }, "\uBD80\uAC00\uC138 \uC788\uC74C (10%)"), /*#__PURE__*/React.createElement("button", {
+    className: !hasVat ? 'on' : '',
+    style: {
+      flex: 1
+    },
+    onClick: () => setHasVat(false)
+  }, "\uBD80\uAC00\uC138 \uC5C6\uC74C"))))), /*#__PURE__*/React.createElement("div", {
     className: "entry-footer"
   }, /*#__PURE__*/React.createElement("div", {
     className: "totals"
@@ -1476,7 +1489,7 @@ const InvoicePage = ({
       fontSize: 10,
       marginLeft: 6
     }
-  }, "(VAT \uD3EC\uD568)")))))), /*#__PURE__*/React.createElement("div", {
+  }, (vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)')))))), /*#__PURE__*/React.createElement("div", {
     className: "col"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3336,31 +3349,52 @@ const Sparkline = ({
 const StatsScreen = () => {
   const state = window.Store.state;
   const [period, setPeriod] = React.useState('month');
+  const fmtKey = dt => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  const today = new Date();
+  const monthAgo = new Date();
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const [customFrom, setCustomFrom] = React.useState(fmtKey(monthAgo));
+  const [customTo, setCustomTo] = React.useState(fmtKey(today));
+  const [viewer, setViewer] = React.useState(null); // { title, headers, rows }
+
   const toDate = s => {
     const [y, m, d] = (s || '').split('.').map(Number);
     return new Date(y, (m || 1) - 1, d || 1);
   };
   const now = new Date();
+  now.setHours(23, 59, 59, 999);
   const rangeStart = (() => {
     if (period === 'week') {
-      const d = new Date(now);
+      const d = new Date();
       d.setDate(d.getDate() - 6);
       d.setHours(0, 0, 0, 0);
       return d;
     }
     if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
     if (period === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    if (period === 'custom') {
+      const [y, m, d] = customFrom.split('-').map(Number);
+      return new Date(y, m - 1, d, 0, 0, 0, 0);
+    }
     return new Date(now.getFullYear(), 0, 1); // year
+  })();
+  const rangeEnd = (() => {
+    if (period === 'custom') {
+      const [y, m, d] = customTo.split('-').map(Number);
+      return new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+    return now;
   })();
   const periodLabel = {
     week: '최근 7일',
     month: '이번 달',
     quarter: '이번 분기',
-    year: '올해'
+    year: '올해',
+    custom: `${customFrom} ~ ${customTo}`
   }[period];
   const inRange = dateStr => {
     const dt = toDate(dateStr);
-    return dt >= rangeStart && dt <= now;
+    return dt >= rangeStart && dt <= rangeEnd;
   };
   const txns = state.transactions.filter(t => inRange(t.date));
   const totalSales = txns.reduce((a, t) => a + (t.total || 0), 0);
@@ -3401,9 +3435,11 @@ const StatsScreen = () => {
   const pad = n => String(n).padStart(2, '0');
   const series = (() => {
     const out = [];
-    if (period === 'quarter' || period === 'year') {
+    const spanDays = Math.round((rangeEnd - rangeStart) / 86400000);
+    const monthly = period === 'quarter' || period === 'year' || spanDays > 62;
+    if (monthly) {
       const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
-      while (cur <= now) {
+      while (cur <= rangeEnd) {
         const y = cur.getFullYear(),
           m = cur.getMonth();
         const sum = txns.filter(t => {
@@ -3415,7 +3451,7 @@ const StatsScreen = () => {
       }
     } else {
       const cur = new Date(rangeStart);
-      while (cur <= now) {
+      while (cur <= rangeEnd) {
         const key = `${cur.getFullYear()}.${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`;
         const sum = txns.filter(t => t.date === key).reduce((a, t) => a + (t.total || 0), 0);
         out.push([`${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`, sum]);
@@ -3446,47 +3482,45 @@ const StatsScreen = () => {
       a.click();
     }
   };
-  const exports = [{
+  const datasets = [{
     title: '거래 내역',
     desc: `${periodLabel} 거래`,
     file: `transactions_${period}_${window.todayKey()}.csv`,
-    run: () => exportCSV(`transactions_${period}_${window.todayKey()}.csv`, ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'], txns.map(t => {
+    headers: ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'],
+    getRows: () => txns.map(t => {
       const c = window.findCustomer(t.customerId);
       return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, t.total - (t.paid || 0), t.memo || ''];
-    }))
+    })
   }, {
     title: '거래처별 집계',
     desc: `${periodLabel} 매출/미수금`,
     file: `customers_${period}_${window.todayKey()}.csv`,
-    run: () => exportCSV(`customers_${period}_${window.todayKey()}.csv`, ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'], state.customers.map(c => {
+    headers: ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'],
+    getRows: () => state.customers.map(c => {
       const txs = txns.filter(t => t.customerId === c.id);
       return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a, t) => a + (t.total || 0), 0), c.due || 0];
-    }))
+    })
   }, {
     title: '품목별 판매',
     desc: '품목·규격·수량',
     file: `items_${window.todayKey()}.csv`,
-    run: () => exportCSV(`items_${window.todayKey()}.csv`, ['품목', '품종', '규격', '단가', '재고', '안전재고', '판매빈도', '육묘일'], state.items.map(i => [i.name, i.variety || '', i.spec, i.price, i.stock, i.safety, i.useCount || 0, i.growing]))
+    headers: ['품목', '품종', '규격', '단가', '재고', '안전재고', '판매빈도', '육묘일'],
+    getRows: () => state.items.map(i => [i.name, i.variety || '', i.spec, i.price, i.stock, i.safety, i.useCount || 0, i.growing])
   }, {
     title: '재고 현황',
     desc: '안전재고 포함',
     file: `stock_${window.todayKey()}.csv`,
-    run: () => exportCSV(`stock_${window.todayKey()}.csv`, ['품목', '규격', '현재재고(트레이)', '안전재고', '상태'], state.items.map(i => [i.name + (i.variety ? ' ' + i.variety : ''), i.spec, i.stock, i.safety, i.stock < i.safety ? '미달' : i.stock < i.safety * 1.5 ? '부족' : '정상']))
+    headers: ['품목', '규격', '현재재고(트레이)', '안전재고', '상태'],
+    getRows: () => state.items.map(i => [i.name + (i.variety ? ' ' + i.variety : ''), i.spec, i.stock, i.safety, i.stock < i.safety ? '미달' : i.stock < i.safety * 1.5 ? '부족' : '정상'])
   }, {
     title: '파종/출하 일정',
     desc: '진행중 + 완료',
     file: `sowings_${window.todayKey()}.csv`,
-    run: () => exportCSV(`sowings_${window.todayKey()}.csv`, ['파종일', '품목', '규격', '트레이수', '출하예정일', '상태', '비고'], state.sowings.map(s => {
+    headers: ['파종일', '품목', '규격', '트레이수', '출하예정일', '상태', '비고'],
+    getRows: () => state.sowings.map(s => {
       const it = window.findItem(s.itemId);
       return [s.sowDate, it?.name || '', `${s.traySize}구`, s.trays, s.shipDate, s.status, s.memo || ''];
-    }))
-  }, {
-    title: '전체 백업 (JSON)',
-    desc: '데이터베이스 전체',
-    file: `saeipari_backup_${window.todayKey()}.json`,
-    run: async () => {
-      await window.Store.exportJSON(`saeipari_backup_${window.todayKey()}.json`);
-    }
+    })
   }];
   return /*#__PURE__*/React.createElement("div", {
     className: "col",
@@ -3500,7 +3534,9 @@ const StatsScreen = () => {
   }, /*#__PURE__*/React.createElement("h2", null, "\uB9E4\uCD9C \uD1B5\uACC4"), /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
-      gap: 10
+      gap: 10,
+      flexWrap: 'wrap',
+      justifyContent: 'flex-end'
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "seg"
@@ -3516,7 +3552,39 @@ const StatsScreen = () => {
   }, "\uC774\uBC88 \uBD84\uAE30"), /*#__PURE__*/React.createElement("button", {
     className: period === 'year' ? 'on' : '',
     onClick: () => setPeriod('year')
-  }, "\uC62C\uD574")))), /*#__PURE__*/React.createElement("div", {
+  }, "\uC62C\uD574"), /*#__PURE__*/React.createElement("button", {
+    className: period === 'custom' ? 'on' : '',
+    onClick: () => setPeriod('custom')
+  }, "\uC0AC\uC6A9\uC790 \uC9C0\uC815")), period === 'custom' && /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "input",
+    style: {
+      height: 34,
+      fontSize: 13,
+      padding: '0 8px'
+    },
+    value: customFrom,
+    max: customTo,
+    onChange: e => setCustomFrom(e.target.value)
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "muted"
+  }, "~"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "input",
+    style: {
+      height: 34,
+      fontSize: 13,
+      padding: '0 8px'
+    },
+    value: customTo,
+    min: customFrom,
+    onChange: e => setCustomTo(e.target.value)
+  })))), /*#__PURE__*/React.createElement("div", {
     className: "card-body"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3639,39 +3707,164 @@ const StatsScreen = () => {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
-  }, /*#__PURE__*/React.createElement("h2", null, "\uB370\uC774\uD130 \uB0B4\uBCF4\uB0B4\uAE30 (CSV / JSON)"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("h2", null, "\uB370\uC774\uD130 \uC870\uD68C / \uB0B4\uBCF4\uB0B4\uAE30"), /*#__PURE__*/React.createElement("span", {
     className: "muted",
     style: {
       fontSize: 13
     }
-  }, "\uC624\uD504\uB77C\uC778 \xB7 \uC778\uD130\uB137 \uBD88\uD544\uC694")), /*#__PURE__*/React.createElement("div", {
+  }, "\uD654\uBA74 \uC870\uD68C \uB610\uB294 CSV \uC800\uC7A5 \xB7 \uC624\uD504\uB77C\uC778")), /*#__PURE__*/React.createElement("div", {
     className: "card-body",
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(3,1fr)',
       gap: 12
     }
-  }, exports.map((e, i) => /*#__PURE__*/React.createElement("button", {
+  }, datasets.map((ds, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     className: "alert-card",
     style: {
-      textAlign: 'left',
-      cursor: 'pointer',
       border: '1px solid var(--line)'
-    },
-    onClick: e.run
+    }
   }, /*#__PURE__*/React.createElement("div", {
     className: "badge"
-  }, /*#__PURE__*/React.createElement(Icons.Download, {
+  }, /*#__PURE__*/React.createElement(Icons.Chart, {
     size: 18
   })), /*#__PURE__*/React.createElement("div", {
     className: "body"
-  }, /*#__PURE__*/React.createElement("h4", null, e.title), /*#__PURE__*/React.createElement("p", null, e.desc, " \xB7 ", /*#__PURE__*/React.createElement("span", {
-    className: "mono",
+  }, /*#__PURE__*/React.createElement("h4", null, ds.title), /*#__PURE__*/React.createElement("p", null, ds.desc), /*#__PURE__*/React.createElement("div", {
+    className: "row",
     style: {
-      fontSize: 12
+      gap: 6,
+      marginTop: 8
     }
-  }, e.file))))))));
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm",
+    onClick: () => setViewer({
+      title: ds.title,
+      headers: ds.headers,
+      rows: ds.getRows(),
+      desc: ds.desc
+    })
+  }, /*#__PURE__*/React.createElement(Icons.Search, {
+    size: 14
+  }), " \uD654\uBA74 \uC870\uD68C"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm",
+    onClick: () => exportCSV(ds.file, ds.headers, ds.getRows())
+  }, /*#__PURE__*/React.createElement(Icons.Download, {
+    size: 14
+  }), " \uB0B4\uBCF4\uB0B4\uAE30"))))), /*#__PURE__*/React.createElement("div", {
+    className: "alert-card",
+    style: {
+      border: '1px solid var(--line)'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "badge"
+  }, /*#__PURE__*/React.createElement(Icons.Save, {
+    size: 18
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "body"
+  }, /*#__PURE__*/React.createElement("h4", null, "\uC804\uCCB4 \uBC31\uC5C5 (JSON)"), /*#__PURE__*/React.createElement("p", null, "\uB370\uC774\uD130\uBCA0\uC774\uC2A4 \uC804\uCCB4"), /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      gap: 6,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm",
+    onClick: () => window.Store.exportJSON(`saeipari_backup_${window.todayKey()}.json`)
+  }, /*#__PURE__*/React.createElement(Icons.Download, {
+    size: 14
+  }), " JSON \uC800\uC7A5")))))), viewer && /*#__PURE__*/React.createElement(DataViewerModal, {
+    data: viewer,
+    onClose: () => setViewer(null),
+    onExport: () => exportCSV(viewer.title + '_' + window.todayKey() + '.csv', viewer.headers, viewer.rows)
+  }));
+};
+const DataViewerModal = ({
+  data,
+  onClose,
+  onExport
+}) => {
+  const {
+    title,
+    headers,
+    rows,
+    desc
+  } = data;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "modal-bg",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "modal",
+    style: {
+      maxWidth: 1100
+    },
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "modal-head"
+  }, /*#__PURE__*/React.createElement("h3", null, /*#__PURE__*/React.createElement(Icons.Search, {
+    size: 16
+  }), " \xA0 ", title, " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      opacity: 0.7,
+      fontWeight: 400,
+      fontSize: 13
+    }
+  }, "\xB7 ", desc)), /*#__PURE__*/React.createElement("div", {
+    className: "modal-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm",
+    style: {
+      height: 32
+    },
+    onClick: onExport
+  }, /*#__PURE__*/React.createElement(Icons.Download, {
+    size: 14
+  }), " CSV \uC800\uC7A5"), /*#__PURE__*/React.createElement("button", {
+    className: "icon-btn",
+    onClick: onClose
+  }, /*#__PURE__*/React.createElement(Icons.X, {
+    size: 18
+  })))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff',
+      padding: 0,
+      maxHeight: '76vh',
+      overflow: 'auto'
+    }
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tx"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, headers.map((h, i) => /*#__PURE__*/React.createElement("th", {
+    key: i,
+    className: i === 0 ? '' : 'num',
+    style: i === 0 ? {} : {
+      textAlign: 'right'
+    }
+  }, h)))), /*#__PURE__*/React.createElement("tbody", null, rows.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: headers.length,
+    style: {
+      textAlign: 'center',
+      padding: 40,
+      color: 'var(--ink-muted)'
+    }
+  }, "\uD45C\uC2DC\uD560 \uB370\uC774\uD130\uAC00 \uC5C6\uC2B5\uB2C8\uB2E4.")), rows.map((r, ri) => /*#__PURE__*/React.createElement("tr", {
+    key: ri
+  }, r.map((c, ci) => /*#__PURE__*/React.createElement("td", {
+    key: ci,
+    className: ci === 0 ? '' : 'num'
+  }, typeof c === 'number' ? window.fmt(c) : c)))), rows.length > 0 && /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: '#FBF7EE'
+    }
+  }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, "\uD569\uACC4 ", rows.length, "\uAC74")), headers.slice(1).map((h, i) => {
+    const col = i + 1;
+    const allNum = rows.every(r => typeof r[col] === 'number');
+    const sum = allNum ? rows.reduce((a, r) => a + (r[col] || 0), 0) : '';
+    return /*#__PURE__*/React.createElement("td", {
+      key: i,
+      className: "num"
+    }, allNum ? window.fmt(sum) : '');
+  })))))));
 };
 window.StatsScreen = StatsScreen;
 //# sourceURL=saeipari/screens/stats.jsx
