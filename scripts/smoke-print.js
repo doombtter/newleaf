@@ -26,7 +26,10 @@ app.whenReady().then(async () => {
     return true;
   })()`);
 
-  const pdf = await win.webContents.printToPDF({ pageSize: 'A4', printBackground: true });
+  const pdf = await win.webContents.printToPDF({
+    pageSize: 'A4', printBackground: true,
+    margins: { marginType: 'none' },
+  });
   fs.writeFileSync('/tmp/print-test.pdf', pdf);
   console.log('pdf bytes', pdf.length);
   app.quit();
