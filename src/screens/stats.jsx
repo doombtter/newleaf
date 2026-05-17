@@ -35,6 +35,7 @@ const StatsScreen = () => {
   const [customFrom, setCustomFrom] = React.useState(fmtKey(monthAgo));
   const [customTo, setCustomTo] = React.useState(fmtKey(today));
   const [viewer, setViewer] = React.useState(null); // { title, headers, rows }
+  const [aggOpen, setAggOpen] = React.useState(false);
 
   const toDate = (s) => { const [y, m, d] = (s || '').split('.').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
   const now = new Date(); now.setHours(23,59,59,999);
@@ -139,19 +140,6 @@ const StatsScreen = () => {
         const c = window.findCustomer(t.customerId);
         return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, (t.total - (t.paid || 0)), t.memo || ''];
       }),
-    },
-    {
-      title: '거래처별 집계', desc: `${periodLabel} 매출/미수금`, file: `customers_${period}_${window.todayKey()}.csv`,
-      headers: ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'],
-      getRows: () => state.customers.map(c => {
-        const txs = txns.filter(t => t.customerId === c.id);
-        return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a,t)=>a+(t.total||0),0), c.due || 0];
-      }),
-    },
-    {
-      title: '품목별 판매', desc: '품목·규격·수량', file: `items_${window.todayKey()}.csv`,
-      headers: ['품목', '품종', '규격', '단가', '재고', '안전재고', '판매빈도', '육묘일'],
-      getRows: () => state.items.map(i => [i.name, i.variety || '', i.spec, i.price, i.stock, i.safety, i.useCount || 0, i.growing]),
     },
     {
       title: '재고 현황', desc: '안전재고 포함', file: `stock_${window.todayKey()}.csv`,
@@ -274,6 +262,18 @@ const StatsScreen = () => {
             </div>
           ))}
           <div className="alert-card" style={{border:'1px solid var(--line)'}}>
+            <div className="badge"><Icons.Users size={18}/></div>
+            <div className="body">
+              <h4>거래처별 품목 집계</h4>
+              <p>거래처 선택 → 월별·연별·기간별 품목 집계</p>
+              <div className="row" style={{gap:6, marginTop:8}}>
+                <button className="btn btn-sm" onClick={() => setAggOpen(true)}>
+                  <Icons.Search size={14}/> 화면 조회
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="alert-card" style={{border:'1px solid var(--line)'}}>
             <div className="badge"><Icons.Save size={18}/></div>
             <div className="body">
               <h4>전체 백업 (JSON)</h4>
@@ -289,6 +289,124 @@ const StatsScreen = () => {
       </div>
 
       {viewer && <DataViewerModal data={viewer} onClose={() => setViewer(null)} onExport={() => exportCSV((viewer.title + '_' + window.todayKey() + '.csv'), viewer.headers, viewer.rows)}/>}
+      {aggOpen && <CustomerItemAggModal onClose={() => setAggOpen(false)} exportCSV={exportCSV}/>}
+    </div>
+  );
+};
+
+const CustomerItemAggModal = ({ onClose, exportCSV }) => {
+  const state = window.Store.state;
+  const customers = [...state.customers].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+  const [custId, setCustId] = React.useState(customers[0]?.id || null);
+  const [mode, setMode] = React.useState('month'); // month | year | range
+  const fmtKey = (dt) => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const ago = new Date(); ago.setMonth(ago.getMonth() - 3);
+  const [from, setFrom] = React.useState(fmtKey(ago));
+  const [to, setTo] = React.useState(fmtKey(new Date()));
+
+  const toDate = (s) => { const [y, m, d] = (s || '').split('.').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
+  const cust = window.findCustomer(custId);
+  const myTx = state.transactions.filter(t => t.customerId === custId);
+
+  // 품목 집계: 기간키(월/연/전체) → 품목별 수량·금액
+  const buildAgg = () => {
+    const groups = {}; // key -> { itemKey -> {qty, amt} }
+    const inRange = (ds) => {
+      if (mode !== 'range') return true;
+      const dt = toDate(ds);
+      const [fy,fm,fd] = from.split('-').map(Number);
+      const [ty,tm,td] = to.split('-').map(Number);
+      return dt >= new Date(fy,fm-1,fd) && dt <= new Date(ty,tm-1,td,23,59,59);
+    };
+    myTx.forEach(t => {
+      if (!inRange(t.date)) return;
+      const [y, m] = t.date.split('.');
+      const key = mode === 'year' ? `${y}년` : mode === 'month' ? `${y}.${m}` : '기간 합계';
+      (t.lines || []).forEach(l => {
+        const it = window.findItem(l.itemId);
+        const ik = (l.name || it?.name || '품목') + (l.spec ? ` (${l.spec})` : '');
+        groups[key] = groups[key] || {};
+        groups[key][ik] = groups[key][ik] || { qty: 0, amt: 0 };
+        groups[key][ik].qty += Number(l.qty || 0);
+        groups[key][ik].amt += Number(l.lineTotal || 0);
+      });
+    });
+    const rows = [];
+    Object.keys(groups).sort().forEach(period => {
+      const items = groups[period];
+      Object.keys(items).sort((a, b) => items[b].amt - items[a].amt).forEach(ik => {
+        rows.push([period, ik, items[ik].qty, items[ik].amt]);
+      });
+    });
+    return rows;
+  };
+  const rows = custId ? buildAgg() : [];
+  const headers = [mode === 'year' ? '연도' : mode === 'month' ? '월' : '기간', '품목', '수량', '금액'];
+  const totalQty = rows.reduce((a, r) => a + r[2], 0);
+  const totalAmt = rows.reduce((a, r) => a + r[3], 0);
+
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{maxWidth:900}} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3><Icons.Users size={16}/> &nbsp; 거래처별 품목 집계</h3>
+          <div className="modal-actions">
+            <button className="btn btn-sm" style={{height:32}} disabled={rows.length === 0}
+              onClick={() => exportCSV(`거래처품목집계_${cust?.name || ''}_${window.todayKey()}.csv`, headers, rows)}>
+              <Icons.Download size={14}/> CSV 저장
+            </button>
+            <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
+          </div>
+        </div>
+        <div style={{background:'#fff', padding:18}}>
+          <div className="row" style={{gap:10, flexWrap:'wrap', marginBottom:14}}>
+            <select className="select" value={custId || ''} onChange={e => setCustId(Number(e.target.value))} style={{minWidth:220}}>
+              {customers.length === 0 && <option value="">거래처 없음</option>}
+              {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <div className="seg">
+              <button className={mode === 'month' ? 'on' : ''} onClick={() => setMode('month')}>월별</button>
+              <button className={mode === 'year' ? 'on' : ''} onClick={() => setMode('year')}>연별</button>
+              <button className={mode === 'range' ? 'on' : ''} onClick={() => setMode('range')}>기간 지정</button>
+            </div>
+            {mode === 'range' && (
+              <div className="row" style={{gap:6}}>
+                <input type="date" className="input" style={{height:34, fontSize:13, padding:'0 8px'}} value={from} max={to} onChange={e => setFrom(e.target.value)}/>
+                <span className="muted">~</span>
+                <input type="date" className="input" style={{height:34, fontSize:13, padding:'0 8px'}} value={to} min={from} onChange={e => setTo(e.target.value)}/>
+              </div>
+            )}
+          </div>
+          <div style={{maxHeight:'62vh', overflow:'auto'}}>
+            <table className="tx">
+              <thead><tr>
+                <th style={{width:120}}>{headers[0]}</th>
+                <th>품목</th>
+                <th className="num" style={{width:100}}>수량</th>
+                <th className="num" style={{width:140}}>금액</th>
+              </tr></thead>
+              <tbody>
+                {rows.length === 0 && <tr><td colSpan="4" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>해당 조건의 거래가 없습니다.</td></tr>}
+                {rows.map((r, i) => (
+                  <tr key={i}>
+                    <td className="mono">{r[0]}</td>
+                    <td>{r[1]}</td>
+                    <td className="num">{window.fmt(r[2])}</td>
+                    <td className="num">{window.fmt(r[3])}원</td>
+                  </tr>
+                ))}
+                {rows.length > 0 && (
+                  <tr style={{background:'#FBF7EE'}}>
+                    <td colSpan="2"><b>합계</b></td>
+                    <td className="num"><b>{window.fmt(totalQty)}</b></td>
+                    <td className="num"><b>{window.fmt(totalAmt)}원</b></td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

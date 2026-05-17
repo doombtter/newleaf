@@ -433,13 +433,21 @@ table.tx tr:hover td{ background: #FBF8F0;}
 }
 
 @media print{
-  /* 인쇄 시 거래명세서만 보이도록 격리 */
+  /* 인쇄 시 거래명세서만 보이도록 격리 + A4 꽉 차게 */
+  @page{ size: A4; margin: 0; }
+  html, body{ width:210mm; }
   body{ background:#fff; }
   body *{ visibility: hidden !important; }
   .invoice-print, .invoice-print *{ visibility: visible !important; }
-  .invoice-print{ position:absolute; left:0; top:0; width:100%; background:#fff !important; padding:0 !important; }
+  .invoice-print{ position:absolute; left:0; top:0; width:210mm !important; background:#fff !important; padding:0 !important; margin:0 !important; }
   .modal-head, .modal-actions, .no-print, .toast{ display:none !important; }
   .modal-bg{ position:static !important; inset:auto !important; padding:0 !important; background:#fff !important; display:block !important; }
   .modal{ box-shadow:none !important; max-height:none !important; background:#fff !important; width:auto !important; }
-  .invoice-page{ box-shadow:none !important; margin:0 auto !important; page-break-after: always; }
+  html{ background:#fff !important; }
+  .invoice-page{
+    box-shadow:none !important; margin:0 auto !important; page-break-after: always;
+    width:794px !important; min-height:1122px !important;
+  }
+  .invoice-page .invoice-table th,
+  .invoice-page .invoice-table td{ padding:4.5px 6px !important; }
 }
