@@ -1178,7 +1178,7 @@ const EntryScreen = ({
     style: {
       textAlign: 'center'
     }
-  }, "No."), /*#__PURE__*/React.createElement("div", null, "\uC6D4/\uC77C"), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
+  }, "No."), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
   }, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
@@ -1191,19 +1191,12 @@ const EntryScreen = ({
       paddingTop: 8
     }
   }, rows.map((r, idx) => {
-    const [, m, d] = date.split('.');
     return /*#__PURE__*/React.createElement("div", {
       key: r.key,
       className: "row-grid"
     }, /*#__PURE__*/React.createElement("div", {
       className: "row-no"
-    }, idx + 1), /*#__PURE__*/React.createElement("input", {
-      className: "row-input mono",
-      defaultValue: `${Number(m)}/${Number(d)}`,
-      style: {
-        textAlign: 'center'
-      }
-    }), /*#__PURE__*/React.createElement(ItemAutocomplete, {
+    }, idx + 1), /*#__PURE__*/React.createElement(ItemAutocomplete, {
       value: r.itemName,
       onChange: v => updateRow(r.key, {
         itemName: v
@@ -1528,15 +1521,7 @@ const InvoicePage = ({
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '4%'
-    }
-  }), /*#__PURE__*/React.createElement("col", {
-    style: {
-      width: '4%'
-    }
-  }), /*#__PURE__*/React.createElement("col", {
-    style: {
-      width: '22%'
+      width: '30%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
@@ -1558,17 +1543,13 @@ const InvoicePage = ({
     style: {
       width: '13.2%'
     }
-  })), /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No."), /*#__PURE__*/React.createElement("th", null, "\uC6D4"), /*#__PURE__*/React.createElement("th", null, "\uC77C"), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", null, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", null, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", null, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", null, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
+  })), /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No."), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", null, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", null, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", null, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", null, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
     const it = window.findItem(r.itemId);
     return /*#__PURE__*/React.createElement("tr", {
       key: i
     }, /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, i + 1), /*#__PURE__*/React.createElement("td", {
-      className: "mono"
-    }, Number(m)), /*#__PURE__*/React.createElement("td", {
-      className: "mono"
-    }, Number(d)), /*#__PURE__*/React.createElement("td", {
       className: "l"
     }, r.itemName || it?.name), /*#__PURE__*/React.createElement("td", null, r.spec), /*#__PURE__*/React.createElement("td", {
       className: "r"
@@ -1584,7 +1565,7 @@ const InvoicePage = ({
   }).map((_, i) => /*#__PURE__*/React.createElement("tr", {
     key: 'e' + i,
     className: "empty"
-  }, /*#__PURE__*/React.createElement("td", null, rows.length + i + 1), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("td", null, rows.length + i + 1), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null))))), /*#__PURE__*/React.createElement("div", {
     className: "invoice-foot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "cell"

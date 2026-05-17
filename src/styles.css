@@ -224,7 +224,7 @@ table.tx tr:hover td{ background: #FBF8F0;}
 
 .entry-grid{ display: grid; grid-template-columns: 1fr 320px; gap: 22px;}
 
-.row-grid{ display:grid; grid-template-columns: 38px 60px 1fr 90px 90px 130px 130px 40px; gap: 8px; align-items:center;}
+.row-grid{ display:grid; grid-template-columns: 38px 1fr 90px 90px 130px 130px 40px; gap: 8px; align-items:center;}
 .row-no{ text-align:center; font-size:13px; color:var(--ink-muted); font-family:var(--font-mono); user-select:none;}
 .entry-grid, .entry-grid *{ -webkit-user-drag:none; }
 .entry-grid img{ -webkit-user-drag:none; user-drag:none; }
