@@ -43,9 +43,7 @@ const InvoicePage = ({ data, copy }) => {
       <table className="invoice-table">
         <colgroup>
           <col style={{width:'4%'}}/>
-          <col style={{width:'4%'}}/>
-          <col style={{width:'4%'}}/>
-          <col style={{width:'22%'}}/>
+          <col style={{width:'30%'}}/>
           <col style={{width:'13.2%'}}/>
           <col style={{width:'13.2%'}}/>
           <col style={{width:'13.2%'}}/>
@@ -55,8 +53,6 @@ const InvoicePage = ({ data, copy }) => {
         <thead>
           <tr>
             <th>No.</th>
-            <th>월</th>
-            <th>일</th>
             <th>품 목</th>
             <th>규격</th>
             <th>수량</th>
@@ -71,8 +67,6 @@ const InvoicePage = ({ data, copy }) => {
             return (
               <tr key={i}>
                 <td className="mono">{i + 1}</td>
-                <td className="mono">{Number(m)}</td>
-                <td className="mono">{Number(d)}</td>
                 <td className="l">{r.itemName || it?.name}</td>
                 <td>{r.spec}</td>
                 <td className="r">{r.qty}</td>
@@ -84,7 +78,7 @@ const InvoicePage = ({ data, copy }) => {
           })}
           {Array.from({ length: blankCount }).map((_, i) => (
             <tr key={'e' + i} className="empty">
-              <td>{rows.length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+              <td>{rows.length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td>
             </tr>
           ))}
         </tbody>
