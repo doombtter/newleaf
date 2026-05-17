@@ -1450,7 +1450,7 @@ const InvoicePage = ({
   } = data;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 50 - rows.length);
+  const blankCount = Math.max(0, 72 - rows.length);
   return /*#__PURE__*/React.createElement("div", {
     className: "invoice-page"
   }, /*#__PURE__*/React.createElement("div", {
