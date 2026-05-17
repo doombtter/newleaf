@@ -22,7 +22,7 @@ const InvoicePage = ({ data, copy }) => {
               <tr><td className="k">대표자</td><td>{customer?.owner || ''}</td></tr>
               <tr><td className="k">사업장</td><td>{customer?.address || ''}</td></tr>
               <tr><td className="k">전화</td><td className="mono">{customer?.phone || ''}</td></tr>
-              <tr><td className="k">합계금액</td><td className="mono"><b>{window.fmt(total)}원</b> <span style={{color:'#666', fontSize:10, marginLeft:6}}>(VAT 포함)</span></td></tr>
+              <tr><td className="k">합계금액</td><td className="mono"><b>{window.fmt(total)}원</b> <span style={{color:'#666', fontSize:10, marginLeft:6}}>{(vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)'}</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -103,7 +103,7 @@ const InvoicePage = ({ data, copy }) => {
 const InvoiceModal = ({ data, onClose }) => {
   if (!data) return null;
   return (
-    <div className="modal-bg no-print" onClick={onClose}>
+    <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3><Icons.Print size={16}/> &nbsp; 거래명세서 인쇄 미리보기 (고객용 1장)</h3>
@@ -112,7 +112,7 @@ const InvoiceModal = ({ data, onClose }) => {
             <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
           </div>
         </div>
-        <div style={{background:'#E8E2D2', padding:'10px 0'}}>
+        <div className="invoice-print" style={{background:'#E8E2D2', padding:'10px 0'}}>
           <InvoicePage data={data} copy="공급받는자 보관용"/>
         </div>
       </div>

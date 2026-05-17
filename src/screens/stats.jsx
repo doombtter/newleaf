@@ -29,17 +29,31 @@ const Sparkline = ({ data, w = 720, h = 200 }) => {
 const StatsScreen = () => {
   const state = window.Store.state;
   const [period, setPeriod] = React.useState('month');
+  const fmtKey = (dt) => `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+  const today = new Date();
+  const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const [customFrom, setCustomFrom] = React.useState(fmtKey(monthAgo));
+  const [customTo, setCustomTo] = React.useState(fmtKey(today));
+  const [viewer, setViewer] = React.useState(null); // { title, headers, rows }
 
   const toDate = (s) => { const [y, m, d] = (s || '').split('.').map(Number); return new Date(y, (m || 1) - 1, d || 1); };
-  const now = new Date();
+  const now = new Date(); now.setHours(23,59,59,999);
   const rangeStart = (() => {
-    if (period === 'week') { const d = new Date(now); d.setDate(d.getDate() - 6); d.setHours(0,0,0,0); return d; }
+    if (period === 'week') { const d = new Date(); d.setDate(d.getDate() - 6); d.setHours(0,0,0,0); return d; }
     if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
     if (period === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    if (period === 'custom') { const [y,m,d] = customFrom.split('-').map(Number); return new Date(y, m-1, d, 0,0,0,0); }
     return new Date(now.getFullYear(), 0, 1); // year
   })();
-  const periodLabel = { week: '최근 7일', month: '이번 달', quarter: '이번 분기', year: '올해' }[period];
-  const inRange = (dateStr) => { const dt = toDate(dateStr); return dt >= rangeStart && dt <= now; };
+  const rangeEnd = (() => {
+    if (period === 'custom') { const [y,m,d] = customTo.split('-').map(Number); return new Date(y, m-1, d, 23,59,59,999); }
+    return now;
+  })();
+  const periodLabel = {
+    week: '최근 7일', month: '이번 달', quarter: '이번 분기', year: '올해',
+    custom: `${customFrom} ~ ${customTo}`
+  }[period];
+  const inRange = (dateStr) => { const dt = toDate(dateStr); return dt >= rangeStart && dt <= rangeEnd; };
   const txns = state.transactions.filter(t => inRange(t.date));
 
   const totalSales = txns.reduce((a, t) => a + (t.total || 0), 0);
@@ -76,9 +90,11 @@ const StatsScreen = () => {
   const pad = (n) => String(n).padStart(2, '0');
   const series = (() => {
     const out = [];
-    if (period === 'quarter' || period === 'year') {
+    const spanDays = Math.round((rangeEnd - rangeStart) / 86400000);
+    const monthly = period === 'quarter' || period === 'year' || spanDays > 62;
+    if (monthly) {
       const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
-      while (cur <= now) {
+      while (cur <= rangeEnd) {
         const y = cur.getFullYear(), m = cur.getMonth();
         const sum = txns.filter(t => { const d = toDate(t.date); return d.getFullYear() === y && d.getMonth() === m; })
           .reduce((a, t) => a + (t.total || 0), 0);
@@ -87,7 +103,7 @@ const StatsScreen = () => {
       }
     } else {
       const cur = new Date(rangeStart);
-      while (cur <= now) {
+      while (cur <= rangeEnd) {
         const key = `${cur.getFullYear()}.${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`;
         const sum = txns.filter(t => t.date === key).reduce((a, t) => a + (t.total || 0), 0);
         out.push([`${pad(cur.getMonth() + 1)}.${pad(cur.getDate())}`, sum]);
@@ -115,51 +131,40 @@ const StatsScreen = () => {
     }
   };
 
-  const exports = [
+  const datasets = [
     {
       title: '거래 내역', desc: `${periodLabel} 거래`, file: `transactions_${period}_${window.todayKey()}.csv`,
-      run: () => exportCSV(`transactions_${period}_${window.todayKey()}.csv`,
-        ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'],
-        txns.map(t => {
-          const c = window.findCustomer(t.customerId);
-          return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, (t.total - (t.paid || 0)), t.memo || ''];
-        }))
+      headers: ['거래일', '거래번호', '거래처', '품목수', '공급가', '부가세', '합계', '결제', '수금', '미수', '비고'],
+      getRows: () => txns.map(t => {
+        const c = window.findCustomer(t.customerId);
+        return [t.date, t.id, c?.name || '', t.items, t.subtotal || 0, t.vat || 0, t.total, t.method, t.paid || 0, (t.total - (t.paid || 0)), t.memo || ''];
+      }),
     },
     {
       title: '거래처별 집계', desc: `${periodLabel} 매출/미수금`, file: `customers_${period}_${window.todayKey()}.csv`,
-      run: () => exportCSV(`customers_${period}_${window.todayKey()}.csv`,
-        ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'],
-        state.customers.map(c => {
-          const txs = txns.filter(t => t.customerId === c.id);
-          return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a,t)=>a+(t.total||0),0), c.due || 0];
-        }))
+      headers: ['거래처', '대표', '연락처', '단가등급', '거래건수', '매출합계', '미수금'],
+      getRows: () => state.customers.map(c => {
+        const txs = txns.filter(t => t.customerId === c.id);
+        return [c.name, c.owner, c.phone, window.tierLabel(c.tier), txs.length, txs.reduce((a,t)=>a+(t.total||0),0), c.due || 0];
+      }),
     },
     {
       title: '품목별 판매', desc: '품목·규격·수량', file: `items_${window.todayKey()}.csv`,
-      run: () => exportCSV(`items_${window.todayKey()}.csv`,
-        ['품목', '품종', '규격', '단가', '재고', '안전재고', '판매빈도', '육묘일'],
-        state.items.map(i => [i.name, i.variety || '', i.spec, i.price, i.stock, i.safety, i.useCount || 0, i.growing]))
+      headers: ['품목', '품종', '규격', '단가', '재고', '안전재고', '판매빈도', '육묘일'],
+      getRows: () => state.items.map(i => [i.name, i.variety || '', i.spec, i.price, i.stock, i.safety, i.useCount || 0, i.growing]),
     },
     {
       title: '재고 현황', desc: '안전재고 포함', file: `stock_${window.todayKey()}.csv`,
-      run: () => exportCSV(`stock_${window.todayKey()}.csv`,
-        ['품목', '규격', '현재재고(트레이)', '안전재고', '상태'],
-        state.items.map(i => [i.name + (i.variety ? ' ' + i.variety : ''), i.spec, i.stock, i.safety, i.stock < i.safety ? '미달' : i.stock < i.safety * 1.5 ? '부족' : '정상']))
+      headers: ['품목', '규격', '현재재고(트레이)', '안전재고', '상태'],
+      getRows: () => state.items.map(i => [i.name + (i.variety ? ' ' + i.variety : ''), i.spec, i.stock, i.safety, i.stock < i.safety ? '미달' : i.stock < i.safety * 1.5 ? '부족' : '정상']),
     },
     {
       title: '파종/출하 일정', desc: '진행중 + 완료', file: `sowings_${window.todayKey()}.csv`,
-      run: () => exportCSV(`sowings_${window.todayKey()}.csv`,
-        ['파종일', '품목', '규격', '트레이수', '출하예정일', '상태', '비고'],
-        state.sowings.map(s => {
-          const it = window.findItem(s.itemId);
-          return [s.sowDate, it?.name || '', `${s.traySize}구`, s.trays, s.shipDate, s.status, s.memo || ''];
-        }))
-    },
-    {
-      title: '전체 백업 (JSON)', desc: '데이터베이스 전체', file: `saeipari_backup_${window.todayKey()}.json`,
-      run: async () => {
-        await window.Store.exportJSON(`saeipari_backup_${window.todayKey()}.json`);
-      }
+      headers: ['파종일', '품목', '규격', '트레이수', '출하예정일', '상태', '비고'],
+      getRows: () => state.sowings.map(s => {
+        const it = window.findItem(s.itemId);
+        return [s.sowDate, it?.name || '', `${s.traySize}구`, s.trays, s.shipDate, s.status, s.memo || ''];
+      }),
     },
   ];
 
@@ -168,13 +173,23 @@ const StatsScreen = () => {
       <div className="card">
         <div className="card-head">
           <h2>매출 통계</h2>
-          <div className="row" style={{gap:10}}>
+          <div className="row" style={{gap:10, flexWrap:'wrap', justifyContent:'flex-end'}}>
             <div className="seg">
               <button className={period === 'week' ? 'on' : ''} onClick={() => setPeriod('week')}>이번 주</button>
               <button className={period === 'month' ? 'on' : ''} onClick={() => setPeriod('month')}>이번 달</button>
               <button className={period === 'quarter' ? 'on' : ''} onClick={() => setPeriod('quarter')}>이번 분기</button>
               <button className={period === 'year' ? 'on' : ''} onClick={() => setPeriod('year')}>올해</button>
+              <button className={period === 'custom' ? 'on' : ''} onClick={() => setPeriod('custom')}>사용자 지정</button>
             </div>
+            {period === 'custom' && (
+              <div className="row" style={{gap:6}}>
+                <input type="date" className="input" style={{height:34, fontSize:13, padding:'0 8px'}}
+                  value={customFrom} max={customTo} onChange={e => setCustomFrom(e.target.value)}/>
+                <span className="muted">~</span>
+                <input type="date" className="input" style={{height:34, fontSize:13, padding:'0 8px'}}
+                  value={customTo} min={customFrom} onChange={e => setCustomTo(e.target.value)}/>
+              </div>
+            )}
           </div>
         </div>
         <div className="card-body">
@@ -237,19 +252,88 @@ const StatsScreen = () => {
 
       <div className="card">
         <div className="card-head">
-          <h2>데이터 내보내기 (CSV / JSON)</h2>
-          <span className="muted" style={{fontSize:13}}>오프라인 · 인터넷 불필요</span>
+          <h2>데이터 조회 / 내보내기</h2>
+          <span className="muted" style={{fontSize:13}}>화면 조회 또는 CSV 저장 · 오프라인</span>
         </div>
         <div className="card-body" style={{display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12}}>
-          {exports.map((e, i) => (
-            <button key={i} className="alert-card" style={{textAlign:'left', cursor:'pointer', border:'1px solid var(--line)'}} onClick={e.run}>
-              <div className="badge"><Icons.Download size={18}/></div>
+          {datasets.map((ds, i) => (
+            <div key={i} className="alert-card" style={{border:'1px solid var(--line)'}}>
+              <div className="badge"><Icons.Chart size={18}/></div>
               <div className="body">
-                <h4>{e.title}</h4>
-                <p>{e.desc} · <span className="mono" style={{fontSize:12}}>{e.file}</span></p>
+                <h4>{ds.title}</h4>
+                <p>{ds.desc}</p>
+                <div className="row" style={{gap:6, marginTop:8}}>
+                  <button className="btn btn-sm" onClick={() => setViewer({ title: ds.title, headers: ds.headers, rows: ds.getRows(), desc: ds.desc })}>
+                    <Icons.Search size={14}/> 화면 조회
+                  </button>
+                  <button className="btn btn-sm" onClick={() => exportCSV(ds.file, ds.headers, ds.getRows())}>
+                    <Icons.Download size={14}/> 내보내기
+                  </button>
+                </div>
               </div>
-            </button>
+            </div>
           ))}
+          <div className="alert-card" style={{border:'1px solid var(--line)'}}>
+            <div className="badge"><Icons.Save size={18}/></div>
+            <div className="body">
+              <h4>전체 백업 (JSON)</h4>
+              <p>데이터베이스 전체</p>
+              <div className="row" style={{gap:6, marginTop:8}}>
+                <button className="btn btn-sm" onClick={() => window.Store.exportJSON(`saeipari_backup_${window.todayKey()}.json`)}>
+                  <Icons.Download size={14}/> JSON 저장
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {viewer && <DataViewerModal data={viewer} onClose={() => setViewer(null)} onExport={() => exportCSV((viewer.title + '_' + window.todayKey() + '.csv'), viewer.headers, viewer.rows)}/>}
+    </div>
+  );
+};
+
+const DataViewerModal = ({ data, onClose, onExport }) => {
+  const { title, headers, rows, desc } = data;
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal" style={{maxWidth:1100}} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3><Icons.Search size={16}/> &nbsp; {title} <span style={{opacity:0.7, fontWeight:400, fontSize:13}}>· {desc}</span></h3>
+          <div className="modal-actions">
+            <button className="btn btn-sm" style={{height:32}} onClick={onExport}><Icons.Download size={14}/> CSV 저장</button>
+            <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
+          </div>
+        </div>
+        <div style={{background:'#fff', padding:0, maxHeight:'76vh', overflow:'auto'}}>
+          <table className="tx">
+            <thead><tr>
+              {headers.map((h, i) => <th key={i} className={i === 0 ? '' : 'num'} style={i === 0 ? {} : { textAlign:'right' }}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {rows.length === 0 && <tr><td colSpan={headers.length} style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>표시할 데이터가 없습니다.</td></tr>}
+              {rows.map((r, ri) => (
+                <tr key={ri}>
+                  {r.map((c, ci) => (
+                    <td key={ci} className={ci === 0 ? '' : 'num'}>
+                      {typeof c === 'number' ? window.fmt(c) : c}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+              {rows.length > 0 && (
+                <tr style={{background:'#FBF7EE'}}>
+                  <td><b>합계 {rows.length}건</b></td>
+                  {headers.slice(1).map((h, i) => {
+                    const col = i + 1;
+                    const allNum = rows.every(r => typeof r[col] === 'number');
+                    const sum = allNum ? rows.reduce((a, r) => a + (r[col] || 0), 0) : '';
+                    return <td key={i} className="num">{allNum ? window.fmt(sum) : ''}</td>;
+                  })}
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
