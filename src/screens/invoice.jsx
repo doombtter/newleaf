@@ -103,7 +103,7 @@ const InvoicePage = ({ data, copy }) => {
 const InvoiceModal = ({ data, onClose }) => {
   if (!data) return null;
   return (
-    <div className="modal-bg no-print" onClick={onClose}>
+    <div className="modal-bg" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-head">
           <h3><Icons.Print size={16}/> &nbsp; 거래명세서 인쇄 미리보기 (고객용 1장)</h3>
@@ -112,7 +112,7 @@ const InvoiceModal = ({ data, onClose }) => {
             <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
           </div>
         </div>
-        <div style={{background:'#E8E2D2', padding:'10px 0'}}>
+        <div className="invoice-print" style={{background:'#E8E2D2', padding:'10px 0'}}>
           <InvoicePage data={data} copy="공급받는자 보관용"/>
         </div>
       </div>

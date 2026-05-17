@@ -1596,7 +1596,7 @@ const InvoiceModal = ({
 }) => {
   if (!data) return null;
   return /*#__PURE__*/React.createElement("div", {
-    className: "modal-bg no-print",
+    className: "modal-bg",
     onClick: onClose
   }, /*#__PURE__*/React.createElement("div", {
     className: "modal",
@@ -1621,6 +1621,7 @@ const InvoiceModal = ({
   }, /*#__PURE__*/React.createElement(Icons.X, {
     size: 18
   })))), /*#__PURE__*/React.createElement("div", {
+    className: "invoice-print",
     style: {
       background: '#E8E2D2',
       padding: '10px 0'
