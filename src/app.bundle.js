@@ -1110,7 +1110,9 @@ const EntryScreen = ({
     }), " \uD488\uBAA9 \uB4F1\uB85D"))));
   }
   return /*#__PURE__*/React.createElement("div", {
-    className: "entry-grid"
+    className: "entry-grid",
+    onDragStart: e => e.preventDefault(),
+    onDrop: e => e.preventDefault()
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1172,7 +1174,11 @@ const EntryScreen = ({
     }
   }, window.fmt(customer?.due || 0), "\uC6D0"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "row-grid head"
-  }, /*#__PURE__*/React.createElement("div", null, "\uC6D4/\uC77C"), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center'
+    }
+  }, "No."), /*#__PURE__*/React.createElement("div", null, "\uC6D4/\uC77C"), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
   }, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
@@ -1184,12 +1190,14 @@ const EntryScreen = ({
       gap: 6,
       paddingTop: 8
     }
-  }, rows.map(r => {
+  }, rows.map((r, idx) => {
     const [, m, d] = date.split('.');
     return /*#__PURE__*/React.createElement("div", {
       key: r.key,
       className: "row-grid"
-    }, /*#__PURE__*/React.createElement("input", {
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "row-no"
+    }, idx + 1), /*#__PURE__*/React.createElement("input", {
       className: "row-input mono",
       defaultValue: `${Number(m)}/${Number(d)}`,
       style: {

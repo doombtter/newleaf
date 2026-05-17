@@ -286,7 +286,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   }
 
   return (
-    <div className="entry-grid">
+    <div className="entry-grid" onDragStart={e => e.preventDefault()} onDrop={e => e.preventDefault()}>
       <div className="card">
         <div className="card-head">
           <h2>{isEdit ? `거래 수정 · #${editTx.id}` : '새 거래명세서'}</h2>
@@ -324,13 +324,14 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
 
           <div>
             <div className="row-grid head">
-              <div>월/일</div><div>품목</div><div>규격</div><div className="right">수량</div><div className="right">단가</div><div className="right">공급가액</div><div></div>
+              <div style={{textAlign:'center'}}>No.</div><div>월/일</div><div>품목</div><div>규격</div><div className="right">수량</div><div className="right">단가</div><div className="right">공급가액</div><div></div>
             </div>
             <div className="col" style={{gap:6, paddingTop:8}}>
-              {rows.map((r) => {
+              {rows.map((r, idx) => {
                 const [, m, d] = date.split('.');
                 return (
                   <div key={r.key} className="row-grid">
+                    <div className="row-no">{idx + 1}</div>
                     <input className="row-input mono" defaultValue={`${Number(m)}/${Number(d)}`} style={{textAlign:'center'}}/>
                     <ItemAutocomplete
                       value={r.itemName}
