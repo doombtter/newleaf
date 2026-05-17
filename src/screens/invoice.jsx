@@ -3,7 +3,7 @@ const InvoicePage = ({ data, copy }) => {
   const { customer, date, rows, subtotal, vat, total } = data;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 74 - rows.length);
+  const blankCount = Math.max(0, 72 - rows.length);
 
   return (
     <div className="invoice-page">
