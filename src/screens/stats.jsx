@@ -34,6 +34,7 @@ const StatsScreen = () => {
   const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
   const [customFrom, setCustomFrom] = React.useState(fmtKey(monthAgo));
   const [customTo, setCustomTo] = React.useState(fmtKey(today));
+  const [ym, setYm] = React.useState(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`);
   const [viewer, setViewer] = React.useState(null); // { title, headers, rows }
   const [aggOpen, setAggOpen] = React.useState(false);
 
@@ -44,15 +45,18 @@ const StatsScreen = () => {
     if (period === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
     if (period === 'quarter') return new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
     if (period === 'custom') { const [y,m,d] = customFrom.split('-').map(Number); return new Date(y, m-1, d, 0,0,0,0); }
+    if (period === 'ym') { const [y,m] = ym.split('-').map(Number); return new Date(y, m-1, 1, 0,0,0,0); }
     return new Date(now.getFullYear(), 0, 1); // year
   })();
   const rangeEnd = (() => {
     if (period === 'custom') { const [y,m,d] = customTo.split('-').map(Number); return new Date(y, m-1, d, 23,59,59,999); }
+    if (period === 'ym') { const [y,m] = ym.split('-').map(Number); return new Date(y, m, 0, 23,59,59,999); }
     return now;
   })();
   const periodLabel = {
     week: '최근 7일', month: '이번 달', quarter: '이번 분기', year: '올해',
-    custom: `${customFrom} ~ ${customTo}`
+    custom: `${customFrom} ~ ${customTo}`,
+    ym: `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월`
   }[period];
   const inRange = (dateStr) => { const dt = toDate(dateStr); return dt >= rangeStart && dt <= rangeEnd; };
   const txns = state.transactions.filter(t => inRange(t.date));
@@ -167,8 +171,15 @@ const StatsScreen = () => {
               <button className={period === 'month' ? 'on' : ''} onClick={() => setPeriod('month')}>이번 달</button>
               <button className={period === 'quarter' ? 'on' : ''} onClick={() => setPeriod('quarter')}>이번 분기</button>
               <button className={period === 'year' ? 'on' : ''} onClick={() => setPeriod('year')}>올해</button>
+              <button className={period === 'ym' ? 'on' : ''} onClick={() => setPeriod('ym')}>월 지정</button>
               <button className={period === 'custom' ? 'on' : ''} onClick={() => setPeriod('custom')}>사용자 지정</button>
             </div>
+            {period === 'ym' && (
+              <div className="row" style={{gap:6}}>
+                <input type="month" className="input" style={{height:34, fontSize:13, padding:'0 8px'}}
+                  value={ym} onChange={e => setYm(e.target.value)}/>
+              </div>
+            )}
             {period === 'custom' && (
               <div className="row" style={{gap:6}}>
                 <input type="date" className="input" style={{height:34, fontSize:13, padding:'0 8px'}}

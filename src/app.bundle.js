@@ -3359,6 +3359,7 @@ const StatsScreen = () => {
   monthAgo.setMonth(monthAgo.getMonth() - 1);
   const [customFrom, setCustomFrom] = React.useState(fmtKey(monthAgo));
   const [customTo, setCustomTo] = React.useState(fmtKey(today));
+  const [ym, setYm] = React.useState(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`);
   const [viewer, setViewer] = React.useState(null); // { title, headers, rows }
   const [aggOpen, setAggOpen] = React.useState(false);
   const toDate = s => {
@@ -3380,12 +3381,20 @@ const StatsScreen = () => {
       const [y, m, d] = customFrom.split('-').map(Number);
       return new Date(y, m - 1, d, 0, 0, 0, 0);
     }
+    if (period === 'ym') {
+      const [y, m] = ym.split('-').map(Number);
+      return new Date(y, m - 1, 1, 0, 0, 0, 0);
+    }
     return new Date(now.getFullYear(), 0, 1); // year
   })();
   const rangeEnd = (() => {
     if (period === 'custom') {
       const [y, m, d] = customTo.split('-').map(Number);
       return new Date(y, m - 1, d, 23, 59, 59, 999);
+    }
+    if (period === 'ym') {
+      const [y, m] = ym.split('-').map(Number);
+      return new Date(y, m, 0, 23, 59, 59, 999);
     }
     return now;
   })();
@@ -3394,7 +3403,8 @@ const StatsScreen = () => {
     month: '이번 달',
     quarter: '이번 분기',
     year: '올해',
-    custom: `${customFrom} ~ ${customTo}`
+    custom: `${customFrom} ~ ${customTo}`,
+    ym: `${ym.split('-')[0]}년 ${Number(ym.split('-')[1])}월`
   }[period];
   const inRange = dateStr => {
     const dt = toDate(dateStr);
@@ -3542,9 +3552,27 @@ const StatsScreen = () => {
     className: period === 'year' ? 'on' : '',
     onClick: () => setPeriod('year')
   }, "\uC62C\uD574"), /*#__PURE__*/React.createElement("button", {
+    className: period === 'ym' ? 'on' : '',
+    onClick: () => setPeriod('ym')
+  }, "\uC6D4 \uC9C0\uC815"), /*#__PURE__*/React.createElement("button", {
     className: period === 'custom' ? 'on' : '',
     onClick: () => setPeriod('custom')
-  }, "\uC0AC\uC6A9\uC790 \uC9C0\uC815")), period === 'custom' && /*#__PURE__*/React.createElement("div", {
+  }, "\uC0AC\uC6A9\uC790 \uC9C0\uC815")), period === 'ym' && /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "month",
+    className: "input",
+    style: {
+      height: 34,
+      fontSize: 13,
+      padding: '0 8px'
+    },
+    value: ym,
+    onChange: e => setYm(e.target.value)
+  })), period === 'custom' && /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       gap: 6
