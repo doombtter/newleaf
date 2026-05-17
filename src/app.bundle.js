@@ -1532,33 +1532,39 @@ const InvoicePage = ({
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '24%'
+      width: '4%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '13.6%'
+      width: '22%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '13.6%'
+      width: '13.2%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '13.6%'
+      width: '13.2%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '13.6%'
+      width: '13.2%'
     }
   }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: '13.6%'
+      width: '13.2%'
     }
-  })), /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\uC6D4"), /*#__PURE__*/React.createElement("th", null, "\uC77C"), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", null, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", null, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", null, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", null, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '13.2%'
+    }
+  })), /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No."), /*#__PURE__*/React.createElement("th", null, "\uC6D4"), /*#__PURE__*/React.createElement("th", null, "\uC77C"), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", null, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", null, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", null, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", null, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
     const it = window.findItem(r.itemId);
     return /*#__PURE__*/React.createElement("tr", {
       key: i
     }, /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, i + 1), /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, Number(m)), /*#__PURE__*/React.createElement("td", {
       className: "mono"
@@ -1578,7 +1584,7 @@ const InvoicePage = ({
   }).map((_, i) => /*#__PURE__*/React.createElement("tr", {
     key: 'e' + i,
     className: "empty"
-  }, /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("td", null, rows.length + i + 1), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null))))), /*#__PURE__*/React.createElement("div", {
     className: "invoice-foot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "cell"
