@@ -1450,7 +1450,7 @@ const InvoicePage = ({
   } = data;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 72 - rows.length);
+  const blankCount = Math.max(0, 40 - rows.length);
   return /*#__PURE__*/React.createElement("div", {
     className: "invoice-page"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1513,35 +1513,39 @@ const InvoicePage = ({
     className: "mono"
   }, window.BIZ.fax)))))), /*#__PURE__*/React.createElement("table", {
     className: "invoice-table"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
+  }, /*#__PURE__*/React.createElement("colgroup", null, /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 34
+      width: '4%'
     }
-  }, "\uC6D4"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 34
+      width: '4%'
     }
-  }, "\uC77C"), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 60
+      width: '24%'
     }
-  }, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 50
+      width: '13.6%'
     }
-  }, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 80
+      width: '13.6%'
     }
-  }, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 90
+      width: '13.6%'
     }
-  }, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", {
+  }), /*#__PURE__*/React.createElement("col", {
     style: {
-      width: 60
+      width: '13.6%'
     }
-  }, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '13.6%'
+    }
+  })), /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\uC6D4"), /*#__PURE__*/React.createElement("th", null, "\uC77C"), /*#__PURE__*/React.createElement("th", null, "\uD488 \uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", null, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("th", null, "\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", null, "\uACF5\uAE09\uAC00\uC561"), /*#__PURE__*/React.createElement("th", null, "\uC138\uC561"))), /*#__PURE__*/React.createElement("tbody", null, rows.map((r, i) => {
     const it = window.findItem(r.itemId);
     return /*#__PURE__*/React.createElement("tr", {
       key: i
