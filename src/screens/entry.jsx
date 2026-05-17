@@ -92,7 +92,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const state = window.Store.state;
   const isEdit = !!editTx;
   const [customerId, setCustomerId] = useState(editTx?.customerId || (state.customers[0]?.id || 1));
-  const [date] = useState(editTx?.date || window.todayKey());
+  const [date, setDate] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
     if (editTx?.lines && editTx.lines.length) {
       const r = editTx.lines.map((l, i) => {
@@ -286,7 +286,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   }
 
   return (
-    <div className="entry-grid">
+    <div className="entry-grid" onDragStart={e => e.preventDefault()} onDrop={e => e.preventDefault()}>
       <div className="card">
         <div className="card-head">
           <h2>{isEdit ? `거래 수정 · #${editTx.id}` : '새 거래명세서'}</h2>
@@ -301,7 +301,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
           <div style={{display:'grid', gridTemplateColumns:'180px 1fr 220px', gap:14}}>
             <div className="field">
               <label>거래일자</label>
-              <input className="input mono" value={date} readOnly/>
+              <input className="input mono" type="date"
+                value={date.replace(/\./g, '-')}
+                onChange={e => setDate(e.target.value ? e.target.value.replace(/-/g, '.') : window.todayKey())}/>
             </div>
             <div className="field">
               <label>거래처</label>
@@ -322,13 +324,14 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
 
           <div>
             <div className="row-grid head">
-              <div>월/일</div><div>품목</div><div>규격</div><div className="right">수량</div><div className="right">단가</div><div className="right">공급가액</div><div></div>
+              <div style={{textAlign:'center'}}>No.</div><div>월/일</div><div>품목</div><div>규격</div><div className="right">수량</div><div className="right">단가</div><div className="right">공급가액</div><div></div>
             </div>
             <div className="col" style={{gap:6, paddingTop:8}}>
-              {rows.map((r) => {
+              {rows.map((r, idx) => {
                 const [, m, d] = date.split('.');
                 return (
                   <div key={r.key} className="row-grid">
+                    <div className="row-no">{idx + 1}</div>
                     <input className="row-input mono" defaultValue={`${Number(m)}/${Number(d)}`} style={{textAlign:'center'}}/>
                     <ItemAutocomplete
                       value={r.itemName}

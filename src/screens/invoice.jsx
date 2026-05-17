@@ -93,8 +93,8 @@ const InvoicePage = ({ data, copy }) => {
           <div className="val">{window.fmt(subtotal)}</div>
         </div>
         <div className="cell">
-          <div className="lbl">상자수</div>
-          <div className="val">{totalQty}</div>
+          <div className="lbl">미수금</div>
+          <div className="val">{window.fmt(customer?.due || 0)}</div>
         </div>
         <div className="cell">
           <div className="lbl">결제 / 입금계좌</div>
@@ -103,8 +103,8 @@ const InvoicePage = ({ data, copy }) => {
         </div>
       </div>
 
-      <div style={{marginTop:8, fontSize:10, color:'#666', textAlign:'center'}}>
-        본 거래명세표는 컴퓨터로 작성 발행되었습니다 · {window.BIZ.name}
+      <div style={{marginTop:8, fontSize:12, textAlign:'center'}}>
+        거래일자 : <b className="mono">{date || window.todayKey()}</b>
       </div>
     </div>
   );

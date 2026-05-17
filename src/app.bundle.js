@@ -886,7 +886,7 @@ const EntryScreen = ({
   const state = window.Store.state;
   const isEdit = !!editTx;
   const [customerId, setCustomerId] = useState(editTx?.customerId || state.customers[0]?.id || 1);
-  const [date] = useState(editTx?.date || window.todayKey());
+  const [date, setDate] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
     if (editTx?.lines && editTx.lines.length) {
       const r = editTx.lines.map((l, i) => {
@@ -1110,7 +1110,9 @@ const EntryScreen = ({
     }), " \uD488\uBAA9 \uB4F1\uB85D"))));
   }
   return /*#__PURE__*/React.createElement("div", {
-    className: "entry-grid"
+    className: "entry-grid",
+    onDragStart: e => e.preventDefault(),
+    onDrop: e => e.preventDefault()
   }, /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1146,8 +1148,9 @@ const EntryScreen = ({
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uAC70\uB798\uC77C\uC790"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
-    value: date,
-    readOnly: true
+    type: "date",
+    value: date.replace(/\./g, '-'),
+    onChange: e => setDate(e.target.value ? e.target.value.replace(/-/g, '.') : window.todayKey())
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uAC70\uB798\uCC98"), /*#__PURE__*/React.createElement("select", {
@@ -1171,7 +1174,11 @@ const EntryScreen = ({
     }
   }, window.fmt(customer?.due || 0), "\uC6D0"))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "row-grid head"
-  }, /*#__PURE__*/React.createElement("div", null, "\uC6D4/\uC77C"), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center'
+    }
+  }, "No."), /*#__PURE__*/React.createElement("div", null, "\uC6D4/\uC77C"), /*#__PURE__*/React.createElement("div", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("div", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
   }, "\uC218\uB7C9"), /*#__PURE__*/React.createElement("div", {
     className: "right"
@@ -1183,12 +1190,14 @@ const EntryScreen = ({
       gap: 6,
       paddingTop: 8
     }
-  }, rows.map(r => {
+  }, rows.map((r, idx) => {
     const [, m, d] = date.split('.');
     return /*#__PURE__*/React.createElement("div", {
       key: r.key,
       className: "row-grid"
-    }, /*#__PURE__*/React.createElement("input", {
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "row-no"
+    }, idx + 1), /*#__PURE__*/React.createElement("input", {
       className: "row-input mono",
       defaultValue: `${Number(m)}/${Number(d)}`,
       style: {
@@ -1581,9 +1590,9 @@ const InvoicePage = ({
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "\uC0C1\uC790\uC218"), /*#__PURE__*/React.createElement("div", {
+  }, "\uBBF8\uC218\uAE08"), /*#__PURE__*/React.createElement("div", {
     className: "val"
-  }, totalQty)), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(customer?.due || 0))), /*#__PURE__*/React.createElement("div", {
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
@@ -1601,11 +1610,12 @@ const InvoicePage = ({
   }, "\uC608\uAE08\uC8FC: ", window.BIZ.owner))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
-      fontSize: 10,
-      color: '#666',
+      fontSize: 12,
       textAlign: 'center'
     }
-  }, "\uBCF8 \uAC70\uB798\uBA85\uC138\uD45C\uB294 \uCEF4\uD4E8\uD130\uB85C \uC791\uC131 \uBC1C\uD589\uB418\uC5C8\uC2B5\uB2C8\uB2E4 \xB7 ", window.BIZ.name));
+  }, "\uAC70\uB798\uC77C\uC790 : ", /*#__PURE__*/React.createElement("b", {
+    className: "mono"
+  }, date || window.todayKey())));
 };
 const InvoiceModal = ({
   data,
