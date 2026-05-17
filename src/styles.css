@@ -449,5 +449,5 @@ table.tx tr:hover td{ background: #FBF8F0;}
     width:794px !important; min-height:1122px !important;
   }
   .invoice-page .invoice-table th,
-  .invoice-page .invoice-table td{ padding:4.5px 6px !important; }
+  .invoice-page .invoice-table td{ padding:3px 6px !important; }
 }

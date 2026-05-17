@@ -1,4 +1,3 @@
-// 인쇄 매체 에뮬레이션 후 invoice-page/행 실제 크기 측정
 const { app, BrowserWindow } = require('electron');
 require('../main.js');
 app.whenReady().then(async () => {
@@ -13,35 +12,26 @@ app.whenReady().then(async () => {
     s.transactions.unshift(tx); await window.Store.commit();
     const host=document.createElement('div'); document.body.appendChild(host);
     ReactDOM.createRoot(host).render(React.createElement(window.InvoiceModal,{ data: window.txToInvoice(tx), onClose:()=>{} }));
-    await new Promise(r=>setTimeout(r,500));
-    return true;
+    await new Promise(r=>setTimeout(r,600)); return true;
   })()`);
-  await win.webContents.debugger.attach('1.3').catch(()=>{});
-  await win.webContents.executeJavaScript(`true`);
-  await win.webContents.emulateMedia ? null : null;
-  const r = await win.webContents.executeJavaScript(`(async ()=>{
-    return { note: 'pre' };
-  })()`);
-  // emulate print
-  await win.webContents.emulateMedia?.('print');
+  await win.webContents.emulateMedia('print');
+  await new Promise(r => setTimeout(r, 300));
   const m = await win.webContents.executeJavaScript(`(()=>{
     const p=document.querySelector('.invoice-page');
     const cs=getComputedStyle(p);
-    const tds=document.querySelectorAll('.invoice-table tbody tr td');
-    const firstEmpty=document.querySelector('.invoice-table tr.empty td');
     const tbl=document.querySelector('.invoice-table');
+    const fill=document.querySelector('.invoice-table tr.inv-fill td');
     return {
-      pageH: p.getBoundingClientRect().height,
-      pageCssHeight: cs.height,
-      pageMinH: cs.minHeight,
-      rowCount: document.querySelectorAll('.invoice-table tbody tr').length,
-      emptyTdH: firstEmpty ? getComputedStyle(firstEmpty).height : 'n/a',
-      tableH: tbl.getBoundingClientRect().height,
-      bodyBg: getComputedStyle(document.body).backgroundColor,
-      htmlBg: getComputedStyle(document.documentElement).backgroundColor,
+      pageRect: p.getBoundingClientRect().height,
+      pageCssH: cs.height, pageDisplay: cs.display,
+      tableRect: tbl.getBoundingClientRect().height,
+      fillRect: fill ? fill.getBoundingClientRect().height : 'na',
+      printPrintWrap: getComputedStyle(document.querySelector('.invoice-print')).position,
+      winInner: window.innerHeight, winInnerW: window.innerWidth,
     };
   })()`);
-  console.log('MEASURE', JSON.stringify(m));
+  console.log('M ' + JSON.stringify(m));
+  await win.webContents.emulateMedia('screen');
   app.quit();
 });
 app.on('window-all-closed', () => process.exit(0));
