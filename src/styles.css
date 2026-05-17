@@ -447,7 +447,7 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .invoice-page{
     box-shadow:none !important; margin:0 auto !important; page-break-after: always;
     width:794px !important; min-height:1122px !important;
-    padding:14px 10px !important;
+    padding:6px 5px !important;
   }
   .invoice-page .invoice-table th,
   .invoice-page .invoice-table td{ padding:3px 6px !important; }
