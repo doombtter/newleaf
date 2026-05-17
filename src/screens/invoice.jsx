@@ -3,7 +3,7 @@ const InvoicePage = ({ data, copy }) => {
   const { customer, date, rows, subtotal, vat, total } = data;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 72 - rows.length);
+  const blankCount = Math.max(0, 40 - rows.length);
 
   return (
     <div className="invoice-page">
@@ -41,16 +41,26 @@ const InvoicePage = ({ data, copy }) => {
       </div>
 
       <table className="invoice-table">
+        <colgroup>
+          <col style={{width:'4%'}}/>
+          <col style={{width:'4%'}}/>
+          <col style={{width:'24%'}}/>
+          <col style={{width:'13.6%'}}/>
+          <col style={{width:'13.6%'}}/>
+          <col style={{width:'13.6%'}}/>
+          <col style={{width:'13.6%'}}/>
+          <col style={{width:'13.6%'}}/>
+        </colgroup>
         <thead>
           <tr>
-            <th style={{width:34}}>월</th>
-            <th style={{width:34}}>일</th>
+            <th>월</th>
+            <th>일</th>
             <th>품 목</th>
-            <th style={{width:60}}>규격</th>
-            <th style={{width:50}}>수량</th>
-            <th style={{width:80}}>단가</th>
-            <th style={{width:90}}>공급가액</th>
-            <th style={{width:60}}>세액</th>
+            <th>규격</th>
+            <th>수량</th>
+            <th>단가</th>
+            <th>공급가액</th>
+            <th>세액</th>
           </tr>
         </thead>
         <tbody>
