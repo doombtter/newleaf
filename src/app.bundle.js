@@ -886,7 +886,7 @@ const EntryScreen = ({
   const state = window.Store.state;
   const isEdit = !!editTx;
   const [customerId, setCustomerId] = useState(editTx?.customerId || state.customers[0]?.id || 1);
-  const [date] = useState(editTx?.date || window.todayKey());
+  const [date, setDate] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
     if (editTx?.lines && editTx.lines.length) {
       const r = editTx.lines.map((l, i) => {
@@ -1146,8 +1146,9 @@ const EntryScreen = ({
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uAC70\uB798\uC77C\uC790"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
-    value: date,
-    readOnly: true
+    type: "date",
+    value: date.replace(/\./g, '-'),
+    onChange: e => setDate(e.target.value ? e.target.value.replace(/-/g, '.') : window.todayKey())
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uAC70\uB798\uCC98"), /*#__PURE__*/React.createElement("select", {
@@ -1581,9 +1582,9 @@ const InvoicePage = ({
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "\uC0C1\uC790\uC218"), /*#__PURE__*/React.createElement("div", {
+  }, "\uBBF8\uC218\uAE08"), /*#__PURE__*/React.createElement("div", {
     className: "val"
-  }, totalQty)), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(customer?.due || 0))), /*#__PURE__*/React.createElement("div", {
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
@@ -1601,11 +1602,12 @@ const InvoicePage = ({
   }, "\uC608\uAE08\uC8FC: ", window.BIZ.owner))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
-      fontSize: 10,
-      color: '#666',
+      fontSize: 12,
       textAlign: 'center'
     }
-  }, "\uBCF8 \uAC70\uB798\uBA85\uC138\uD45C\uB294 \uCEF4\uD4E8\uD130\uB85C \uC791\uC131 \uBC1C\uD589\uB418\uC5C8\uC2B5\uB2C8\uB2E4 \xB7 ", window.BIZ.name));
+  }, "\uAC70\uB798\uC77C\uC790 : ", /*#__PURE__*/React.createElement("b", {
+    className: "mono"
+  }, date || window.todayKey())));
 };
 const InvoiceModal = ({
   data,

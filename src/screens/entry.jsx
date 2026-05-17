@@ -92,7 +92,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const state = window.Store.state;
   const isEdit = !!editTx;
   const [customerId, setCustomerId] = useState(editTx?.customerId || (state.customers[0]?.id || 1));
-  const [date] = useState(editTx?.date || window.todayKey());
+  const [date, setDate] = useState(editTx?.date || window.todayKey());
   const [rows, setRows] = useState(() => {
     if (editTx?.lines && editTx.lines.length) {
       const r = editTx.lines.map((l, i) => {
@@ -301,7 +301,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
           <div style={{display:'grid', gridTemplateColumns:'180px 1fr 220px', gap:14}}>
             <div className="field">
               <label>거래일자</label>
-              <input className="input mono" value={date} readOnly/>
+              <input className="input mono" type="date"
+                value={date.replace(/\./g, '-')}
+                onChange={e => setDate(e.target.value ? e.target.value.replace(/-/g, '.') : window.todayKey())}/>
             </div>
             <div className="field">
               <label>거래처</label>

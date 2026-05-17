@@ -331,7 +331,7 @@ table.tx tr:hover td{ background: #FBF8F0;}
 .invoice-info .col + .col{ border-left: 1px solid #111;}
 .invoice-info table{ width: 100%; border-collapse: collapse; font-size: 11px;}
 .invoice-info td{ padding: 2px 6px; vertical-align: top;}
-.invoice-info td.k{ width: 70px; color: #444; font-weight: 600; border-right: 1px dashed #999;}
+.invoice-info td.k{ width: 72px; color: #444; font-weight: 600; border-right: 1px dashed #999; white-space: nowrap;}
 .invoice-table{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; table-layout: fixed;}
 .invoice-table td.l{ word-break: break-all;}
 .invoice-table th, .invoice-table td{ border: 1px solid #111; padding: 0 5px; text-align: center; height: 14px; line-height: 1.05;}
@@ -451,13 +451,13 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .invoice-page{
     box-shadow:none !important; margin:0 !important; page-break-after: always;
     width:100% !important; max-width:none !important; min-height:1122px !important;
-    padding:10mm 8mm !important; font-size:14.6px !important;
+    padding:10mm 8mm !important; font-size:15.9px !important;
   }
-  .invoice-page .invoice-sub{ font-size:13.6px !important; }
-  .invoice-page .invoice-info table{ font-size:13.6px !important; }
-  .invoice-page .invoice-table{ font-size:12.6px !important; }
+  .invoice-page .invoice-sub{ font-size:14.9px !important; }
+  .invoice-page .invoice-info table{ font-size:14.9px !important; }
+  .invoice-page .invoice-table{ font-size:13.9px !important; }
   .invoice-page .invoice-table th,
   .invoice-page .invoice-table td{ padding:3px 6px !important; }
-  .invoice-page .invoice-foot .cell{ font-size:13.6px !important; }
-  .invoice-page .invoice-foot .lbl{ font-size:12.6px !important; }
+  .invoice-page .invoice-foot .cell{ font-size:14.9px !important; }
+  .invoice-page .invoice-foot .lbl{ font-size:13.9px !important; }
 }
