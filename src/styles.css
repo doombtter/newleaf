@@ -463,11 +463,11 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .invoice-page .invoice-sub{ font-size:14px !important; }
   .invoice-page .invoice-info .inv-line{ font-size:17px !important; gap:5px 26px !important; padding:3px 0 !important; }
   .invoice-page .invoice-info .inv-party{ font-size:12px !important; }
-  .invoice-page .invoice-table{ font-size:15px !important; }
-  .invoice-page .invoice-table th{ font-size:14px !important; white-space:nowrap !important; }
+  .invoice-page .invoice-table{ font-size:17px !important; }
+  .invoice-page .invoice-table th{ font-size:16px !important; white-space:nowrap !important; }
   .invoice-page .invoice-table th,
   .invoice-page .invoice-table td{ padding:1.5px 6px !important; }
-  .invoice-page .invoice-table td.l{ font-size:19px !important; font-weight:700 !important; }
+  .invoice-page .invoice-table td.l{ font-size:21px !important; font-weight:700 !important; }
   .invoice-page .invoice-foot .cell{ font-size:18px !important; }
   .invoice-page .invoice-foot .lbl{ font-size:15px !important; }
   .invoice-page .invoice-foot .val{ font-size:22px !important; }

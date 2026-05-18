@@ -172,7 +172,15 @@ window.getInitials = str => {
   }
   return out;
 };
-window.fmt = n => (Number(n) || 0).toLocaleString('ko-KR');
+
+// 천단위 쉼표 — 환경(ICU/로케일)에 의존하지 않도록 수동 처리
+window.fmt = n => {
+  const num = Number(n);
+  if (!isFinite(num)) return '0';
+  const neg = num < 0;
+  const s = String(Math.round(Math.abs(num))).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return (neg ? '-' : '') + s;
+};
 window.todayLabel = () => {
   const d = new Date();
   const days = ['일', '월', '화', '수', '목', '금', '토'];
