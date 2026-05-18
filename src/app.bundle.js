@@ -1474,7 +1474,7 @@ const InvoicePage = ({
   } = data;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 26 - rows.length);
+  const blankCount = Math.max(0, 40 - rows.length);
   return /*#__PURE__*/React.createElement("div", {
     className: "invoice-page"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1488,54 +1488,28 @@ const InvoicePage = ({
   }, /*#__PURE__*/React.createElement("div", {
     className: "col"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: '#666',
-      marginBottom: 4
-    }
-  }, "\uACF5 \uAE09 \uBC1B \uB294 \uC790"), /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC0C1\uD638"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, customer?.name || ''))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uB300\uD45C\uC790"), /*#__PURE__*/React.createElement("td", null, customer?.owner || '')), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC0AC\uC5C5\uC7A5"), /*#__PURE__*/React.createElement("td", null, customer?.address || '')), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC804\uD654"), /*#__PURE__*/React.createElement("td", {
+    className: "inv-party"
+  }, "\uACF5 \uAE09 \uBC1B \uB294 \uC790"), /*#__PURE__*/React.createElement("div", {
+    className: "inv-line"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0C1\uD638"), " ", /*#__PURE__*/React.createElement("b", null, customer?.name || '')), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uB300\uD45C\uC790"), " ", customer?.owner || ''), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0AC\uC5C5\uC7A5"), " ", customer?.address || '')), /*#__PURE__*/React.createElement("div", {
+    className: "inv-line"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC804\uD654"), " ", /*#__PURE__*/React.createElement("span", {
     className: "mono"
-  }, customer?.phone || '')), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uD569\uACC4\uAE08\uC561"), /*#__PURE__*/React.createElement("td", {
+  }, customer?.phone || '')), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uD569\uACC4\uAE08\uC561"), " ", /*#__PURE__*/React.createElement("b", {
     className: "mono"
-  }, /*#__PURE__*/React.createElement("b", null, window.fmt(total), "\uC6D0"), " ", /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: '#666',
-      fontSize: 10,
-      marginLeft: 6
-    }
-  }, (vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)')))))), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(total), "\uC6D0"), " ", /*#__PURE__*/React.createElement("small", null, (vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)')))), /*#__PURE__*/React.createElement("div", {
     className: "col"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 10,
-      color: '#666',
-      marginBottom: 4
-    }
-  }, "\uACF5 \uAE09 \uC790"), /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC0C1\uD638"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, window.BIZ.name))), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC131\uBA85"), /*#__PURE__*/React.createElement("td", null, window.BIZ.owner, " (\uC778)")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC0AC\uC5C5\uC7A5"), /*#__PURE__*/React.createElement("td", null, window.BIZ.address)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uC804\uD654"), /*#__PURE__*/React.createElement("td", {
+    className: "inv-party"
+  }, "\uACF5 \uAE09 \uC790"), /*#__PURE__*/React.createElement("div", {
+    className: "inv-line"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0C1\uD638"), " ", /*#__PURE__*/React.createElement("b", null, window.BIZ.name)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC131\uBA85"), " ", window.BIZ.owner, " (\uC778)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0AC\uC5C5\uC7A5"), " ", window.BIZ.address)), /*#__PURE__*/React.createElement("div", {
+    className: "inv-line"
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC804\uD654"), " ", /*#__PURE__*/React.createElement("span", {
     className: "mono"
-  }, window.BIZ.phone)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    className: "k"
-  }, "\uD329\uC2A4"), /*#__PURE__*/React.createElement("td", {
+  }, window.BIZ.phone)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uD329\uC2A4"), " ", /*#__PURE__*/React.createElement("span", {
     className: "mono"
-  }, window.BIZ.fax)))))), /*#__PURE__*/React.createElement("table", {
+  }, window.BIZ.fax))))), /*#__PURE__*/React.createElement("table", {
     className: "invoice-table"
   }, /*#__PURE__*/React.createElement("colgroup", null, /*#__PURE__*/React.createElement("col", {
     style: {
