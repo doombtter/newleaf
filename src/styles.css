@@ -454,15 +454,15 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .invoice-page{
     box-shadow:none !important; margin:0 !important; page-break-after: always;
     width:100% !important; max-width:none !important; min-height:1122px !important;
-    padding:10mm 8mm !important; font-size:21px !important;
+    padding:10mm 8mm !important; font-size:23px !important;
   }
-  .invoice-page .invoice-sub{ font-size:19px !important; }
-  .invoice-page .invoice-info table{ font-size:19px !important; }
+  .invoice-page .invoice-sub{ font-size:21px !important; }
+  .invoice-page .invoice-info table{ font-size:21px !important; }
   .invoice-page .invoice-info td{ padding:3px 6px !important; }
-  .invoice-page .invoice-table{ font-size:18px !important; }
+  .invoice-page .invoice-table{ font-size:20px !important; }
   .invoice-page .invoice-table th,
-  .invoice-page .invoice-table td{ padding:2px 6px !important; }
-  .invoice-page .invoice-foot .cell{ font-size:19px !important; }
-  .invoice-page .invoice-foot .lbl{ font-size:16px !important; }
-  .invoice-page .invoice-foot .val{ font-size:21px !important; }
+  .invoice-page .invoice-table td{ padding:1.5px 6px !important; }
+  .invoice-page .invoice-foot .cell{ font-size:21px !important; }
+  .invoice-page .invoice-foot .lbl{ font-size:17px !important; }
+  .invoice-page .invoice-foot .val{ font-size:23px !important; }
 }
