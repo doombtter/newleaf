@@ -81,6 +81,7 @@ window.seedFactory = () => ({
   monthlyDue: 0,
   dailyRevenue: [],
   trayPresets: [32, 40, 50, 72, 98, 105, 128, 162, 200, 288],
+  customerPrices: {},
 });
 
 window.DEFAULT_TRAY_PRESETS = [32, 40, 50, 72, 98, 105, 128, 162, 200, 288];
@@ -145,7 +146,28 @@ window.txToInvoice = (tx) => {
 
 window.tierLabel = (tier) => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = (tier) => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
+
+// 거래처별 전용 단가: state.customerPrices[customerId][itemId] = price
+window.getCustomerPrice = (itemId, customerId) => {
+  const cp = window.Store?.state?.customerPrices;
+  const v = cp && cp[customerId] && cp[customerId][itemId];
+  return (v === 0 || v) ? Number(v) : undefined;
+};
+window.setCustomerPrice = (customerId, itemId, price) => {
+  const s = window.Store.state;
+  if (!s.customerPrices) s.customerPrices = {};
+  if (!s.customerPrices[customerId]) s.customerPrices[customerId] = {};
+  if (price === '' || price === null || price === undefined || isNaN(Number(price))) {
+    delete s.customerPrices[customerId][itemId]; // 비우면 자동가로 복귀
+  } else {
+    s.customerPrices[customerId][itemId] = Number(price);
+  }
+};
 window.priceFor = (item, customer) => {
   if (!item) return 0;
+  if (customer) {
+    const explicit = window.getCustomerPrice(item.id, customer.id);
+    if (explicit !== undefined) return explicit;
+  }
   return Math.round(item.price * window.tierMultiplier(customer?.tier || 'standard'));
 };

@@ -225,7 +225,8 @@ window.seedFactory = () => ({
   monthlyPaid: 0,
   monthlyDue: 0,
   dailyRevenue: [],
-  trayPresets: [32, 40, 50, 72, 98, 105, 128, 162, 200, 288]
+  trayPresets: [32, 40, 50, 72, 98, 105, 128, 162, 200, 288],
+  customerPrices: {}
 });
 window.DEFAULT_TRAY_PRESETS = [32, 40, 50, 72, 98, 105, 128, 162, 200, 288];
 // 기존 데이터(추천 목록 필드 없음) 대비 안전 접근자
@@ -293,8 +294,29 @@ window.txToInvoice = tx => {
 };
 window.tierLabel = tier => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = tier => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
+
+// 거래처별 전용 단가: state.customerPrices[customerId][itemId] = price
+window.getCustomerPrice = (itemId, customerId) => {
+  const cp = window.Store?.state?.customerPrices;
+  const v = cp && cp[customerId] && cp[customerId][itemId];
+  return v === 0 || v ? Number(v) : undefined;
+};
+window.setCustomerPrice = (customerId, itemId, price) => {
+  const s = window.Store.state;
+  if (!s.customerPrices) s.customerPrices = {};
+  if (!s.customerPrices[customerId]) s.customerPrices[customerId] = {};
+  if (price === '' || price === null || price === undefined || isNaN(Number(price))) {
+    delete s.customerPrices[customerId][itemId]; // 비우면 자동가로 복귀
+  } else {
+    s.customerPrices[customerId][itemId] = Number(price);
+  }
+};
 window.priceFor = (item, customer) => {
   if (!item) return 0;
+  if (customer) {
+    const explicit = window.getCustomerPrice(item.id, customer.id);
+    if (explicit !== undefined) return explicit;
+  }
   return Math.round(item.price * window.tierMultiplier(customer?.tier || 'standard'));
 };
 //# sourceURL=saeipari/seed.js
@@ -2069,26 +2091,70 @@ const CustomersScreen = ({
       textAlign: 'center',
       color: 'var(--ink-muted)'
     }
-  }, "\uBBF8\uC218\uAE08 \uC5C6\uC74C \u2713"), tab === 'prices' && /*#__PURE__*/React.createElement("table", {
+  }, "\uBBF8\uC218\uAE08 \uC5C6\uC74C \u2713"), tab === 'prices' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '14px 22px',
+      fontSize: 13,
+      color: 'var(--ink-soft)'
+    }
+  }, "\uD488\uBAA9\uBCC4\uB85C ", /*#__PURE__*/React.createElement("b", null, c.name), " \uC804\uC6A9 \uB2E8\uAC00\uB97C \uC9C1\uC811 \uC785\uB825\uD558\uC138\uC694. \uBE44\uC6CC\uB450\uBA74 \uB4F1\uAE09 \uC790\uB3D9\uAC00(", window.tierLabel(c.tier), ")\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4."), /*#__PURE__*/React.createElement("table", {
     className: "tx"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", {
     className: "num"
   }, "\uAE30\uBCF8\uAC00"), /*#__PURE__*/React.createElement("th", {
     className: "num"
-  }, c.name, " \uC801\uC6A9\uAC00"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, state.items.slice(0, 10).map(it => /*#__PURE__*/React.createElement("tr", {
-    key: it.id
-  }, /*#__PURE__*/React.createElement("td", null, it.name, " ", it.variety && /*#__PURE__*/React.createElement("span", {
-    className: "muted"
-  }, "\xB7 ", it.variety)), /*#__PURE__*/React.createElement("td", null, it.spec), /*#__PURE__*/React.createElement("td", {
-    className: "num"
-  }, window.fmt(it.price), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
-    className: "num"
-  }, /*#__PURE__*/React.createElement("b", null, window.fmt(window.priceFor(it, c)), "\uC6D0")), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
-    className: "muted",
+  }, "\uC790\uB3D9\uAC00(", window.tierLabel(c.tier), ")"), /*#__PURE__*/React.createElement("th", {
+    className: "num",
     style: {
-      fontSize: 12
+      width: 160
     }
-  }, window.tierLabel(c.tier), " \uC790\uB3D9")))))), tab === 'memo' && /*#__PURE__*/React.createElement("div", {
+  }, "\uC804\uC6A9 \uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 90
+    }
+  }))), /*#__PURE__*/React.createElement("tbody", null, state.items.map(it => {
+    const explicit = window.getCustomerPrice(it.id, c.id);
+    const auto = Math.round(it.price * window.tierMultiplier(c.tier));
+    return /*#__PURE__*/React.createElement("tr", {
+      key: it.id
+    }, /*#__PURE__*/React.createElement("td", null, it.name, " ", it.variety && /*#__PURE__*/React.createElement("span", {
+      className: "muted"
+    }, "\xB7 ", it.variety)), /*#__PURE__*/React.createElement("td", null, it.spec), /*#__PURE__*/React.createElement("td", {
+      className: "num"
+    }, window.fmt(it.price), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+      className: "num"
+    }, window.fmt(auto), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+      className: "num"
+    }, /*#__PURE__*/React.createElement("input", {
+      className: "input mono",
+      style: {
+        height: 34,
+        textAlign: 'right',
+        width: 140
+      },
+      defaultValue: explicit !== undefined ? explicit : '',
+      placeholder: `자동 ${window.fmt(auto)}`,
+      onBlur: async e => {
+        window.setCustomerPrice(c.id, it.id, e.target.value.trim());
+        await window.Store.commit();
+        force();
+      }
+    })), /*#__PURE__*/React.createElement("td", null, explicit !== undefined ? /*#__PURE__*/React.createElement("span", {
+      className: "tag tag-green"
+    }, "\uC804\uC6A9\uAC00") : /*#__PURE__*/React.createElement("span", {
+      className: "muted",
+      style: {
+        fontSize: 12
+      }
+    }, "\uC790\uB3D9")));
+  }), state.items.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: "6",
+    style: {
+      textAlign: 'center',
+      padding: 40,
+      color: 'var(--ink-muted)'
+    }
+  }, "\uB4F1\uB85D\uB41C \uD488\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."))))), tab === 'memo' && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 22
     }

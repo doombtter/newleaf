@@ -227,20 +227,44 @@ const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
             )}
             {tab === 'due' && (c.due || 0) === 0 && <div style={{padding:60, textAlign:'center', color:'var(--ink-muted)'}}>미수금 없음 ✓</div>}
             {tab === 'prices' && (
-              <table className="tx">
-                <thead><tr><th>품목</th><th>규격</th><th className="num">기본가</th><th className="num">{c.name} 적용가</th><th></th></tr></thead>
-                <tbody>
-                  {state.items.slice(0, 10).map(it => (
-                    <tr key={it.id}>
-                      <td>{it.name} {it.variety && <span className="muted">· {it.variety}</span>}</td>
-                      <td>{it.spec}</td>
-                      <td className="num">{window.fmt(it.price)}원</td>
-                      <td className="num"><b>{window.fmt(window.priceFor(it, c))}원</b></td>
-                      <td><span className="muted" style={{fontSize:12}}>{window.tierLabel(c.tier)} 자동</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div>
+                <div style={{padding:'14px 22px', fontSize:13, color:'var(--ink-soft)'}}>
+                  품목별로 <b>{c.name}</b> 전용 단가를 직접 입력하세요. 비워두면 등급 자동가({window.tierLabel(c.tier)})가 적용됩니다.
+                </div>
+                <table className="tx">
+                  <thead><tr><th>품목</th><th>규격</th><th className="num">기본가</th><th className="num">자동가({window.tierLabel(c.tier)})</th><th className="num" style={{width:160}}>전용 단가</th><th style={{width:90}}></th></tr></thead>
+                  <tbody>
+                    {state.items.map(it => {
+                      const explicit = window.getCustomerPrice(it.id, c.id);
+                      const auto = Math.round(it.price * window.tierMultiplier(c.tier));
+                      return (
+                        <tr key={it.id}>
+                          <td>{it.name} {it.variety && <span className="muted">· {it.variety}</span>}</td>
+                          <td>{it.spec}</td>
+                          <td className="num">{window.fmt(it.price)}원</td>
+                          <td className="num">{window.fmt(auto)}원</td>
+                          <td className="num">
+                            <input className="input mono" style={{height:34, textAlign:'right', width:140}}
+                              defaultValue={explicit !== undefined ? explicit : ''}
+                              placeholder={`자동 ${window.fmt(auto)}`}
+                              onBlur={async (e) => {
+                                window.setCustomerPrice(c.id, it.id, e.target.value.trim());
+                                await window.Store.commit();
+                                force();
+                              }}/>
+                          </td>
+                          <td>
+                            {explicit !== undefined
+                              ? <span className="tag tag-green">전용가</span>
+                              : <span className="muted" style={{fontSize:12}}>자동</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {state.items.length === 0 && <tr><td colSpan="6" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>등록된 품목이 없습니다.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             )}
             {tab === 'memo' && (
               <div style={{padding:22}}>
