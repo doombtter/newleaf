@@ -15,28 +15,28 @@ const InvoicePage = ({ data, copy }) => {
 
       <div className="invoice-info">
         <div className="col">
-          <div style={{fontSize:10, color:'#666', marginBottom:4}}>공 급 받 는 자</div>
-          <table>
-            <tbody>
-              <tr><td className="k">상호</td><td><b>{customer?.name || ''}</b></td></tr>
-              <tr><td className="k">대표자</td><td>{customer?.owner || ''}</td></tr>
-              <tr><td className="k">사업장</td><td>{customer?.address || ''}</td></tr>
-              <tr><td className="k">전화</td><td className="mono">{customer?.phone || ''}</td></tr>
-              <tr><td className="k">합계금액</td><td className="mono"><b>{window.fmt(total)}원</b> <span style={{color:'#666', fontSize:10, marginLeft:6}}>{(vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)'}</span></td></tr>
-            </tbody>
-          </table>
+          <div className="inv-party">공 급 받 는 자</div>
+          <div className="inv-line">
+            <span><i>상호</i> <b>{customer?.name || ''}</b></span>
+            <span><i>대표자</i> {customer?.owner || ''}</span>
+            <span><i>사업장</i> {customer?.address || ''}</span>
+          </div>
+          <div className="inv-line">
+            <span><i>전화</i> <span className="mono">{customer?.phone || ''}</span></span>
+            <span><i>합계금액</i> <b className="mono">{window.fmt(total)}원</b> <small>{(vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)'}</small></span>
+          </div>
         </div>
         <div className="col">
-          <div style={{fontSize:10, color:'#666', marginBottom:4}}>공 급 자</div>
-          <table>
-            <tbody>
-              <tr><td className="k">상호</td><td><b>{window.BIZ.name}</b></td></tr>
-              <tr><td className="k">성명</td><td>{window.BIZ.owner} (인)</td></tr>
-              <tr><td className="k">사업장</td><td>{window.BIZ.address}</td></tr>
-              <tr><td className="k">전화</td><td className="mono">{window.BIZ.phone}</td></tr>
-              <tr><td className="k">팩스</td><td className="mono">{window.BIZ.fax}</td></tr>
-            </tbody>
-          </table>
+          <div className="inv-party">공 급 자</div>
+          <div className="inv-line">
+            <span><i>상호</i> <b>{window.BIZ.name}</b></span>
+            <span><i>성명</i> {window.BIZ.owner} (인)</span>
+            <span><i>사업장</i> {window.BIZ.address}</span>
+          </div>
+          <div className="inv-line">
+            <span><i>전화</i> <span className="mono">{window.BIZ.phone}</span></span>
+            <span><i>팩스</i> <span className="mono">{window.BIZ.fax}</span></span>
+          </div>
         </div>
       </div>
 
