@@ -327,11 +327,11 @@ table.tx tr:hover td{ background: #FBF8F0;}
 }
 .invoice-sub{ display:flex; justify-content:space-between; padding: 4px 4px 8px; font-size: 11px;}
 .invoice-info{
-  display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+  display: grid; grid-template-columns: 1fr; gap: 0;
   border: 1px solid #111;
 }
-.invoice-info .col{ padding: 5px 10px;}
-.invoice-info .col + .col{ border-left: 1px solid #111;}
+.invoice-info .col{ padding: 7px 12px;}
+.invoice-info .col + .col{ border-top: 1px solid #111;}
 .invoice-info table{ width: 100%; border-collapse: collapse; font-size: 11px;}
 .invoice-info td{ padding: 2px 6px; vertical-align: top;}
 .invoice-info td.k{ width: 72px; color: #444; font-weight: 600; border-right: 1px dashed #999; white-space: nowrap;}
@@ -454,17 +454,17 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .invoice-page{
     box-shadow:none !important; margin:0 !important; page-break-after: always;
     width:100% !important; max-width:none !important; min-height:1122px !important;
-    padding:10mm 8mm !important; font-size:42px !important;
+    padding:10mm 8mm !important; font-size:18px !important;
   }
-  .invoice-page .invoice-sub{ font-size:38px !important; }
-  .invoice-page .invoice-info table{ font-size:38px !important; }
-  .invoice-page .invoice-info td{ padding:4px 6px !important; }
-  .invoice-page .invoice-table{ font-size:38px !important; }
+  .invoice-page .invoice-sub{ font-size:14px !important; }
+  .invoice-page .invoice-info table{ font-size:18px !important; }
+  .invoice-page .invoice-info td{ padding:4px 8px !important; }
+  .invoice-page .invoice-table{ font-size:24px !important; }
+  .invoice-page .invoice-table th{ font-size:20px !important; white-space:nowrap !important; }
   .invoice-page .invoice-table th,
   .invoice-page .invoice-table td{ padding:3px 6px !important; }
-  .invoice-page .invoice-foot .cell{ font-size:38px !important; }
-  .invoice-page .invoice-foot .lbl{ font-size:30px !important; }
-  .invoice-page .invoice-foot .val{ font-size:42px !important; }
-  .invoice-page .invoice-title{ font-size:40px !important; letter-spacing:14px !important; }
-  .invoice-page .invoice-table th{ white-space:nowrap !important; }
+  .invoice-page .invoice-table td.l{ font-size:30px !important; font-weight:600 !important; }
+  .invoice-page .invoice-foot .cell{ font-size:18px !important; }
+  .invoice-page .invoice-foot .lbl{ font-size:15px !important; }
+  .invoice-page .invoice-foot .val{ font-size:22px !important; }
 }
