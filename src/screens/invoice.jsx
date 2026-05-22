@@ -7,38 +7,42 @@ const InvoicePage = ({ data, copy }) => {
 
   return (
     <div className="invoice-page">
-      <div className="invoice-title">거 래 명 세 표</div>
-      <div className="invoice-sub">
-        <div>({copy})</div>
-        <div>등록번호 <b className="mono">{window.BIZ.bizNo}</b></div>
-      </div>
+      <div className="invoice-title">거 래 명 세 표 <span className="invoice-copy">({copy})</span></div>
 
-      <div className="invoice-info">
-        <div className="col">
-          <div className="inv-party">공 급 받 는 자</div>
-          <div className="inv-line">
-            <span><i>상호</i> <b>{customer?.name || ''}</b></span>
-            <span><i>대표자</i> {customer?.owner || ''}</span>
-            <span><i>사업장</i> {customer?.address || ''}</span>
-          </div>
-          <div className="inv-line">
-            <span><i>전화</i> <span className="mono">{customer?.phone || ''}</span></span>
-            <span><i>합계금액</i> <b className="mono">{window.fmt(total)}원</b> <small>{(vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)'}</small></span>
-          </div>
-        </div>
-        <div className="col">
-          <div className="inv-party">공 급 자</div>
-          <div className="inv-line">
-            <span><i>상호</i> <b>{window.BIZ.name}</b></span>
-            <span><i>성명</i> {window.BIZ.owner} (인)</span>
-            <span><i>사업장</i> {window.BIZ.address}</span>
-          </div>
-          <div className="inv-line">
-            <span><i>전화</i> <span className="mono">{window.BIZ.phone}</span></span>
-            <span><i>팩스</i> <span className="mono">{window.BIZ.fax}</span></span>
-          </div>
-        </div>
-      </div>
+      <table className="inv-head">
+        <tbody>
+          <tr>
+            <td className="side" rowSpan={4}>공<br/>급<br/>받<br/>는<br/>자</td>
+            <td className="lab">상호<br/>(법인명)</td>
+            <td className="val nm">{customer?.name || ''}</td>
+            <td className="side" rowSpan={4}>공<br/>급<br/>자</td>
+            <td className="lab">등록번호</td>
+            <td className="val reg" colSpan={3}>{window.BIZ.bizNo}</td>
+          </tr>
+          <tr>
+            <td className="lab">사업장<br/>주소</td>
+            <td className="val">{customer?.address || ''}</td>
+            <td className="lab">상호<br/>(법인명)</td>
+            <td className="val nm">{window.BIZ.name}</td>
+            <td className="lab">성명</td>
+            <td className="val">{window.BIZ.owner} (인)</td>
+          </tr>
+          <tr>
+            <td className="lab">전화번호</td>
+            <td className="val mono">{customer?.phone || ''}</td>
+            <td className="lab">사업장<br/>주소</td>
+            <td className="val" colSpan={3}>{window.BIZ.address}</td>
+          </tr>
+          <tr>
+            <td className="lab">합계금액<br/><small>{(vat || 0) > 0 ? '(VAT포함)' : '(VAT없음)'}</small></td>
+            <td className="val amt mono">{window.fmt(total)}원</td>
+            <td className="lab">전화</td>
+            <td className="val mono">{window.BIZ.phone}</td>
+            <td className="lab">팩스</td>
+            <td className="val mono">{window.BIZ.fax}</td>
+          </tr>
+        </tbody>
+      </table>
 
       <table className="invoice-table">
         <colgroup>

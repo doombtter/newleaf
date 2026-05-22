@@ -1487,37 +1487,59 @@ const InvoicePage = ({
     className: "invoice-page"
   }, /*#__PURE__*/React.createElement("div", {
     className: "invoice-title"
-  }, "\uAC70 \uB798 \uBA85 \uC138 \uD45C"), /*#__PURE__*/React.createElement("div", {
-    className: "invoice-sub"
-  }, /*#__PURE__*/React.createElement("div", null, "(", copy, ")"), /*#__PURE__*/React.createElement("div", null, "\uB4F1\uB85D\uBC88\uD638 ", /*#__PURE__*/React.createElement("b", {
-    className: "mono"
-  }, window.BIZ.bizNo))), /*#__PURE__*/React.createElement("div", {
-    className: "invoice-info"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "col"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "inv-party"
-  }, "\uACF5 \uAE09 \uBC1B \uB294 \uC790"), /*#__PURE__*/React.createElement("div", {
-    className: "inv-line"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0C1\uD638"), " ", /*#__PURE__*/React.createElement("b", null, customer?.name || '')), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uB300\uD45C\uC790"), " ", customer?.owner || ''), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0AC\uC5C5\uC7A5"), " ", customer?.address || '')), /*#__PURE__*/React.createElement("div", {
-    className: "inv-line"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC804\uD654"), " ", /*#__PURE__*/React.createElement("span", {
-    className: "mono"
-  }, customer?.phone || '')), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uD569\uACC4\uAE08\uC561"), " ", /*#__PURE__*/React.createElement("b", {
-    className: "mono"
-  }, window.fmt(total), "\uC6D0"), " ", /*#__PURE__*/React.createElement("small", null, (vat || 0) > 0 ? '(VAT 포함)' : '(VAT 없음)')))), /*#__PURE__*/React.createElement("div", {
-    className: "col"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "inv-party"
-  }, "\uACF5 \uAE09 \uC790"), /*#__PURE__*/React.createElement("div", {
-    className: "inv-line"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0C1\uD638"), " ", /*#__PURE__*/React.createElement("b", null, window.BIZ.name)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC131\uBA85"), " ", window.BIZ.owner, " (\uC778)"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC0AC\uC5C5\uC7A5"), " ", window.BIZ.address)), /*#__PURE__*/React.createElement("div", {
-    className: "inv-line"
-  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uC804\uD654"), " ", /*#__PURE__*/React.createElement("span", {
-    className: "mono"
-  }, window.BIZ.phone)), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", null, "\uD329\uC2A4"), " ", /*#__PURE__*/React.createElement("span", {
-    className: "mono"
-  }, window.BIZ.fax))))), /*#__PURE__*/React.createElement("table", {
+  }, "\uAC70 \uB798 \uBA85 \uC138 \uD45C ", /*#__PURE__*/React.createElement("span", {
+    className: "invoice-copy"
+  }, "(", copy, ")")), /*#__PURE__*/React.createElement("table", {
+    className: "inv-head"
+  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "side",
+    rowSpan: 4
+  }, "\uACF5", /*#__PURE__*/React.createElement("br", null), "\uAE09", /*#__PURE__*/React.createElement("br", null), "\uBC1B", /*#__PURE__*/React.createElement("br", null), "\uB294", /*#__PURE__*/React.createElement("br", null), "\uC790"), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC0C1\uD638", /*#__PURE__*/React.createElement("br", null), "(\uBC95\uC778\uBA85)"), /*#__PURE__*/React.createElement("td", {
+    className: "val nm"
+  }, customer?.name || ''), /*#__PURE__*/React.createElement("td", {
+    className: "side",
+    rowSpan: 4
+  }, "\uACF5", /*#__PURE__*/React.createElement("br", null), "\uAE09", /*#__PURE__*/React.createElement("br", null), "\uC790"), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uB4F1\uB85D\uBC88\uD638"), /*#__PURE__*/React.createElement("td", {
+    className: "val reg",
+    colSpan: 3
+  }, window.BIZ.bizNo)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC0AC\uC5C5\uC7A5", /*#__PURE__*/React.createElement("br", null), "\uC8FC\uC18C"), /*#__PURE__*/React.createElement("td", {
+    className: "val"
+  }, customer?.address || ''), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC0C1\uD638", /*#__PURE__*/React.createElement("br", null), "(\uBC95\uC778\uBA85)"), /*#__PURE__*/React.createElement("td", {
+    className: "val nm"
+  }, window.BIZ.name), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC131\uBA85"), /*#__PURE__*/React.createElement("td", {
+    className: "val"
+  }, window.BIZ.owner, " (\uC778)")), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC804\uD654\uBC88\uD638"), /*#__PURE__*/React.createElement("td", {
+    className: "val mono"
+  }, customer?.phone || ''), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC0AC\uC5C5\uC7A5", /*#__PURE__*/React.createElement("br", null), "\uC8FC\uC18C"), /*#__PURE__*/React.createElement("td", {
+    className: "val",
+    colSpan: 3
+  }, window.BIZ.address)), /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uD569\uACC4\uAE08\uC561", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("small", null, (vat || 0) > 0 ? '(VAT포함)' : '(VAT없음)')), /*#__PURE__*/React.createElement("td", {
+    className: "val amt mono"
+  }, window.fmt(total), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uC804\uD654"), /*#__PURE__*/React.createElement("td", {
+    className: "val mono"
+  }, window.BIZ.phone), /*#__PURE__*/React.createElement("td", {
+    className: "lab"
+  }, "\uD329\uC2A4"), /*#__PURE__*/React.createElement("td", {
+    className: "val mono"
+  }, window.BIZ.fax)))), /*#__PURE__*/React.createElement("table", {
     className: "invoice-table"
   }, /*#__PURE__*/React.createElement("colgroup", null, /*#__PURE__*/React.createElement("col", {
     style: {
