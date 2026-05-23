@@ -116,7 +116,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const [hasVat, setHasVat] = useState(
     editTx ? (editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0) : false
   );
-  const [boxCount, setBoxCount] = useState(editTx?.boxCount || 0);
+  const [boxOverride, setBoxOverride] = useState(editTx ? (editTx.boxCount ?? null) : null);
   const [savedToast, setSavedToast] = useState(false);
   const BOX_UNIT = 500;
 
@@ -136,6 +136,8 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
+  const autoBoxCount = rows.reduce((a, r) => a + (r.itemId ? (Number(r.qty) || 0) : 0), 0); // 수량 합계
+  const boxCount = boxOverride != null ? boxOverride : autoBoxCount; // 비override 시 자동 카운팅
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT;          // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct);              // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
@@ -365,9 +367,14 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
             <div className="field">
               <label>비고</label>
               <textarea className="textarea" rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder="거래 관련 메모 (선택)"/>
-              <label style={{marginTop:8}}>상자 수 (개당 {window.fmt(BOX_UNIT)}원 공제)</label>
+              <label style={{marginTop:8}}>
+                상자 수 (개당 {window.fmt(BOX_UNIT)}원 공제)
+                {boxOverride == null
+                  ? <span className="muted" style={{marginLeft:6, fontSize:12}}>· 수량 자동합계</span>
+                  : <button className="btn btn-sm btn-ghost" style={{marginLeft:6, height:22, padding:'0 6px', fontSize:12}} onClick={() => setBoxOverride(null)}>자동으로</button>}
+              </label>
               <input className="input mono" type="number" min="0" value={boxCount}
-                onChange={e => setBoxCount(Math.max(0, Number(e.target.value) || 0))} placeholder="0"/>
+                onChange={e => setBoxOverride(Math.max(0, Number(e.target.value) || 0))} placeholder="0"/>
             </div>
             <div className="field">
               <label>결제 방식</label>
