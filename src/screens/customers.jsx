@@ -73,7 +73,7 @@ const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
     const id = state.nextCustomerId || (Math.max(...state.customers.map(x => x.id)) + 1);
     state.nextCustomerId = id + 1;
     state.customers.push({
-      id, name: '신규 거래처', owner: '', phone: '', address: '', type: 'individual', tier: 'standard', due: 0, last: '', memo: ''
+      id, name: '신규 거래처', owner: '', phone: '', address: '', type: 'individual', tier: 'standard', priceLevel: 1, due: 0, last: '', memo: ''
     });
     setSelectedId(id);
     setEditing(true);
@@ -110,7 +110,7 @@ const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
             <div key={cu.id} className={'list-row' + (cu.id === selectedId ? ' selected' : '')} onClick={() => { setSelectedId(cu.id); setEditing(false); }}>
               <div>
                 <div className="nm">{cu.name}</div>
-                <div className="sub">{window.tierLabel(cu.tier)} · {cu.phone}</div>
+                <div className="sub">{window.levelLabel(cu.priceLevel)} · {cu.phone}</div>
               </div>
               <div className={'due ' + ((cu.due || 0) === 0 ? 'zero' : '')}>{(cu.due || 0) === 0 ? '—' : window.fmt(cu.due) + '원'}</div>
             </div>
@@ -137,7 +137,7 @@ const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
                 <div className="kv"><span className="k">대표자</span><span className="v">{c.owner || '—'}</span></div>
                 <div className="kv"><span className="k">연락처</span><span className="v mono">{c.phone || '—'}</span></div>
                 <div className="kv" style={{gridColumn:'span 2'}}><span className="k">주소</span><span className="v" style={{fontSize:14}}>{c.address || '—'}</span></div>
-                <div className="kv"><span className="k">단가 등급</span><span className="v">{window.tierLabel(c.tier)}</span></div>
+                <div className="kv"><span className="k">적용 단가</span><span className="v">{window.levelLabel(c.priceLevel)}</span></div>
                 <div className="kv"><span className="k">올해 누적 매출</span><span className="v mono">{window.fmt(yearTotal)}원</span></div>
                 <div className="kv"><span className="k">올해 거래 건수</span><span className="v">{txs.length}건</span></div>
                 <div className="kv" style={{background: c.due > 0 ? 'var(--warn-soft)' : 'var(--green-50)'}}>
@@ -229,34 +229,31 @@ const CustomersScreen = ({ onNav, onEditTx, onReprint }) => {
             {tab === 'prices' && (
               <div>
                 <div style={{padding:'14px 22px', fontSize:13, color:'var(--ink-soft)'}}>
-                  품목별로 <b>{c.name}</b> 전용 단가를 직접 입력하세요. 비워두면 등급 자동가({window.tierLabel(c.tier)})가 적용됩니다.
+                  <b>{c.name}</b>에는 현재 <b>{window.levelLabel(c.priceLevel)}</b>가 적용됩니다(정보 수정에서 변경). 특정 품목만 다르게 받을 땐 "전용 단가"에 직접 입력하세요(비우면 {window.levelLabel(c.priceLevel)} 적용).
                 </div>
                 <table className="tx">
-                  <thead><tr><th>품목</th><th>규격</th><th className="num">기본가</th><th className="num">자동가({window.tierLabel(c.tier)})</th><th className="num" style={{width:160}}>전용 단가</th><th style={{width:90}}></th></tr></thead>
+                  <thead><tr><th>품목</th><th>규격</th><th className="num">단가1</th><th className="num">단가2</th><th className="num">단가3</th><th className="num" style={{width:150}}>전용 단가</th></tr></thead>
                   <tbody>
                     {state.items.map(it => {
                       const explicit = window.getCustomerPrice(it.id, c.id);
-                      const auto = Math.round(it.price * window.tierMultiplier(c.tier));
+                      const lv = Number(c.priceLevel) || 1;
+                      const cell = (n) => (
+                        <td className="num" style={lv === n ? { background:'var(--green-50)', fontWeight:700 } : {}}>{window.fmt(window.itemLevelPrice(it, n))}원</td>
+                      );
                       return (
                         <tr key={it.id}>
                           <td>{it.name} {it.variety && <span className="muted">· {it.variety}</span>}</td>
                           <td>{it.spec}</td>
-                          <td className="num">{window.fmt(it.price)}원</td>
-                          <td className="num">{window.fmt(auto)}원</td>
+                          {cell(1)}{cell(2)}{cell(3)}
                           <td className="num">
-                            <input className="input mono" style={{height:34, textAlign:'right', width:140}}
+                            <input className="input mono" style={{height:34, textAlign:'right', width:130}}
                               defaultValue={explicit !== undefined ? explicit : ''}
-                              placeholder={`자동 ${window.fmt(auto)}`}
+                              placeholder={`${window.fmt(window.itemLevelPrice(it, lv))}`}
                               onBlur={async (e) => {
                                 window.setCustomerPrice(c.id, it.id, e.target.value.trim());
                                 await window.Store.commit();
                                 force();
                               }}/>
-                          </td>
-                          <td>
-                            {explicit !== undefined
-                              ? <span className="tag tag-green">전용가</span>
-                              : <span className="muted" style={{fontSize:12}}>자동</span>}
                           </td>
                         </tr>
                       );
@@ -299,11 +296,11 @@ const CustomerEditForm = ({ customer, onSave, onCancel }) => {
           </select>
         </div>
         <div className="field" style={{gridColumn:'span 2'}}><label>주소</label><input className="input" value={form.address||''} onChange={e=>setForm({...form, address:e.target.value})}/></div>
-        <div className="field"><label>단가 등급</label>
-          <select className="select" value={form.tier||'standard'} onChange={e=>setForm({...form, tier:e.target.value})}>
-            <option value="standard">일반가</option>
-            <option value="regular">단골가 (-7%)</option>
-            <option value="wholesale">도매가 (-15%)</option>
+        <div className="field"><label>적용 단가 선택</label>
+          <select className="select" value={form.priceLevel || 1} onChange={e=>setForm({...form, priceLevel:Number(e.target.value)})}>
+            <option value={1}>단가1</option>
+            <option value={2}>단가2</option>
+            <option value={3}>단가3</option>
           </select>
         </div>
         <div className="field"><label>미수금 잔액 (수동 조정)</label><input className="input mono" value={form.due||0} onChange={e=>setForm({...form, due:Number(e.target.value)||0})}/></div>

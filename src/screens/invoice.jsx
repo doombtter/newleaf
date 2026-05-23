@@ -1,6 +1,9 @@
 // 거래명세서 인쇄 미리보기
 const InvoicePage = ({ data, copy }) => {
   const { customer, date, rows, subtotal, vat, total } = data;
+  const exBoxTotal = (data.exBoxTotal != null) ? data.exBoxTotal : (data.total != null ? data.total : subtotal);
+  const prevDue = (data.prevDue != null) ? data.prevDue : (customer?.due || 0);
+  const boxCount = data.boxCount || 0;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
   const blankCount = Math.max(0, 40 - rows.length);
@@ -90,12 +93,12 @@ const InvoicePage = ({ data, copy }) => {
 
       <div className="invoice-foot">
         <div className="cell">
-          <div className="lbl">상자외 합계</div>
-          <div className="val">{window.fmt(subtotal)}</div>
+          <div className="lbl">상자외 합계{boxCount > 0 ? ` (상자 ${boxCount}개 공제)` : ''}</div>
+          <div className="val">{window.fmt(exBoxTotal)}</div>
         </div>
         <div className="cell">
-          <div className="lbl">미수금</div>
-          <div className="val">{window.fmt(customer?.due || 0)}</div>
+          <div className="lbl">미수금 (이전까지)</div>
+          <div className="val">{window.fmt(prevDue)}</div>
         </div>
         <div className="cell">
           <div className="lbl">결제 / 입금계좌</div>

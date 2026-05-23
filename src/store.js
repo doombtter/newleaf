@@ -24,8 +24,19 @@
       if (i.stock == null) i.stock = 0;
       if (i.safety == null) i.safety = 0;
       if (!i.initials && i.name && window.getInitials) i.initials = window.getInitials(i.name);
+      // 단가1/2/3 보정(기존 단일 price → 세 칸 채움)
+      const base = Number(i.price) || 0;
+      if (i.price1 == null) i.price1 = base;
+      if (i.price2 == null) i.price2 = base;
+      if (i.price3 == null) i.price3 = base;
     });
-    (data.customers || []).forEach(c => { if (c.due == null) c.due = 0; });
+    (data.customers || []).forEach(c => {
+      if (c.due == null) c.due = 0;
+      if (c.priceLevel == null) {
+        // 기존 tier → 레벨 매핑(standard=1, regular=2, wholesale=3)
+        c.priceLevel = c.tier === 'wholesale' ? 3 : c.tier === 'regular' ? 2 : 1;
+      }
+    });
     (data.transactions || []).forEach(t => { if (t.paid == null) t.paid = 0; if (!Array.isArray(t.lines)) t.lines = []; });
     // 다음 ID는 기존 최대값 이상으로 보정 (충돌 방지)
     const maxId = (arr) => (arr && arr.length) ? Math.max(...arr.map(x => x.id || 0)) : 0;

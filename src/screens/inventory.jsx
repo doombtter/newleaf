@@ -1,21 +1,18 @@
-// 재고/품목 관리
+// 품목 관리 (단가1·2·3)
 const InventoryScreen = () => {
   const state = window.Store.state;
-  const [filter, setFilter] = React.useState('all');
   const [editing, setEditing] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [presetOpen, setPresetOpen] = React.useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
 
-  let items = state.items;
-  if (filter === 'low') items = items.filter(i => i.stock < i.safety);
-  if (filter === 'good') items = items.filter(i => i.stock >= i.safety);
+  const items = state.items;
 
   const handleSave = async (form) => {
     if (creating) {
-      const id = state.nextItemId || (Math.max(...state.items.map(x => x.id)) + 1);
+      const id = state.nextItemId || (Math.max(0, ...state.items.map(x => x.id)) + 1);
       state.nextItemId = id + 1;
-      state.items.push({ ...form, id, initials: window.getInitials(form.name), useCount: 0 });
+      state.items.push({ ...form, id, initials: window.getInitials(form.name), useCount: 0, stock: 0, safety: 0, growing: 0 });
     } else {
       Object.assign(editing, form, { initials: window.getInitials(form.name) });
     }
@@ -32,40 +29,24 @@ const InventoryScreen = () => {
     force();
   };
 
-  const blank = () => ({ name: '', variety: '', tray: 50, spec: '50구', unit: 'tray', price: 15000, stock: 0, safety: 10, growing: 40, memo: '' });
+  const blank = () => ({ name: '', variety: '', tray: 50, spec: '50구', unit: 'tray', price1: 15000, price2: 15000, price3: 15000, memo: '' });
 
   return (
     <div className="col" style={{gap:18}}>
-      <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:14}}>
+      <div style={{display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:14}}>
         <div className="stat">
           <div className="label">총 품목 수</div>
           <div className="value">{state.items.length}<span style={{fontSize:14, color:'var(--ink-muted)', marginLeft:6, fontFamily:'inherit'}}>종</span></div>
         </div>
         <div className="stat">
-          <div className="label">재고 총량</div>
-          <div className="value">{state.items.reduce((a, i) => a + (i.stock || 0), 0)}<span style={{fontSize:14, color:'var(--ink-muted)', marginLeft:6, fontFamily:'inherit'}}>트레이</span></div>
-        </div>
-        <div className="stat danger">
-          <div className="label">안전재고 미달</div>
-          <div className="value">{state.items.filter(i => i.stock < i.safety).length}<span style={{fontSize:14, color:'var(--ink-muted)', marginLeft:6, fontFamily:'inherit'}}>종</span></div>
-          <div className="delta" style={{color:'var(--danger)'}}>즉시 파종 검토</div>
-        </div>
-        <div className="stat">
-          <div className="label">진행 중 파종 (출하 예정)</div>
-          <div className="value">{state.sowings.filter(s => s.status !== 'shipped').reduce((a, s) => a + (s.trays || 0), 0)}<span style={{fontSize:14, color:'var(--ink-muted)', marginLeft:6, fontFamily:'inherit'}}>트레이</span></div>
+          <div className="label">거래처 수</div>
+          <div className="value">{state.customers.length}<span style={{fontSize:14, color:'var(--ink-muted)', marginLeft:6, fontFamily:'inherit'}}>곳</span></div>
         </div>
       </div>
 
       <div className="card">
         <div className="card-head">
-          <div className="row" style={{gap:14}}>
-            <h2>품목 마스터 / 재고 현황</h2>
-            <div className="seg">
-              <button className={filter === 'all' ? 'on' : ''} onClick={() => setFilter('all')}>전체</button>
-              <button className={filter === 'low' ? 'on' : ''} onClick={() => setFilter('low')}>안전재고 미달</button>
-              <button className={filter === 'good' ? 'on' : ''} onClick={() => setFilter('good')}>정상</button>
-            </div>
-          </div>
+          <h2>품목 / 단가 관리</h2>
           <div className="row" style={{gap:8}}>
             <button className="btn btn-sm" onClick={() => setPresetOpen(true)}><Icons.Settings size={14}/> 추천 공수 편집</button>
             <button className="btn btn-sm btn-primary" onClick={() => { setCreating(true); setEditing(blank()); }}><Icons.Plus size={14}/> 신규 품목</button>
@@ -75,52 +56,31 @@ const InventoryScreen = () => {
           <table className="tx">
             <thead><tr>
               <th>품목</th>
-              <th style={{width:80}}>품종</th>
-              <th style={{width:70}}>규격</th>
-              <th className="num" style={{width:100}}>기본단가</th>
-              <th style={{width:200}}>현재 재고 / 안전재고</th>
-              <th className="num" style={{width:80}}>육묘일</th>
-              <th className="num" style={{width:80}}>판매빈도</th>
-              <th style={{width:80}}>상태</th>
+              <th style={{width:100}}>품종</th>
+              <th style={{width:80}}>규격</th>
+              <th className="num" style={{width:110}}>단가1</th>
+              <th className="num" style={{width:110}}>단가2</th>
+              <th className="num" style={{width:110}}>단가3</th>
               <th style={{width:110}}></th>
             </tr></thead>
             <tbody>
-              {items.map(it => {
-                const ratio = it.stock / Math.max(1, it.safety * 2);
-                const cls = it.stock < it.safety ? 'danger' : it.stock < it.safety * 1.5 ? 'warn' : '';
-                return (
-                  <tr key={it.id}>
-                    <td><b>{it.name}</b></td>
-                    <td>{it.variety || '—'}</td>
-                    <td>{it.spec}</td>
-                    <td className="num">{window.fmt(it.price)}원</td>
-                    <td>
-                      <div className="row" style={{justifyContent:'space-between', marginBottom:4, fontSize:12}}>
-                        <b className="mono">{it.stock} 트레이</b>
-                        <span className="muted mono">안전 {it.safety}</span>
-                      </div>
-                      <div className="stock-bar">
-                        <div className={'fill ' + cls} style={{width: Math.min(100, ratio * 100) + '%'}}/>
-                      </div>
-                    </td>
-                    <td className="num">{it.growing}일</td>
-                    <td className="num">{it.useCount || 0}회</td>
-                    <td>
-                      {it.stock < it.safety
-                        ? <span className="tag tag-danger">미달</span>
-                        : it.stock < it.safety * 1.5
-                          ? <span className="tag tag-warn">부족</span>
-                          : <span className="tag tag-green">정상</span>}
-                    </td>
-                    <td>
-                      <div className="row" style={{gap:4}}>
-                        <button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button>
-                        <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} onClick={() => handleDelete(it)} title="삭제"><Icons.Trash size={14}/></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+              {items.length === 0 && <tr><td colSpan="7" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>등록된 품목이 없습니다. "신규 품목"으로 추가하세요.</td></tr>}
+              {items.map(it => (
+                <tr key={it.id}>
+                  <td><b>{it.name}</b></td>
+                  <td>{it.variety || '—'}</td>
+                  <td>{it.spec}</td>
+                  <td className="num">{window.fmt(window.itemLevelPrice(it, 1))}원</td>
+                  <td className="num">{window.fmt(window.itemLevelPrice(it, 2))}원</td>
+                  <td className="num">{window.fmt(window.itemLevelPrice(it, 3))}원</td>
+                  <td>
+                    <div className="row" style={{gap:4}}>
+                      <button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button>
+                      <button className="btn btn-sm btn-ghost" style={{color:'var(--danger)'}} onClick={() => handleDelete(it)} title="삭제"><Icons.Trash size={14}/></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -162,10 +122,9 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
               {window.getTrayPresets().map(n => <option key={n} value={n}/>)}
             </datalist>
           </div>
-          <div className="field"><label>기본 단가 (원)</label><input className="input mono" value={form.price||0} onChange={e=>setForm({...form, price:Number(e.target.value)||0})}/></div>
-          <div className="field"><label>현재 재고 (트레이)</label><input className="input mono" value={form.stock||0} onChange={e=>setForm({...form, stock:Number(e.target.value)||0})}/></div>
-          <div className="field"><label>안전 재고 (트레이)</label><input className="input mono" value={form.safety||0} onChange={e=>setForm({...form, safety:Number(e.target.value)||0})}/></div>
-          <div className="field"><label>육묘 기간 (일)</label><input className="input mono" value={form.growing||0} onChange={e=>setForm({...form, growing:Number(e.target.value)||0})}/></div>
+          <div className="field"><label>단가1 (원)</label><input className="input mono" value={form.price1 ?? form.price ?? 0} onChange={e=>setForm({...form, price1:Number(e.target.value)||0})}/></div>
+          <div className="field"><label>단가2 (원)</label><input className="input mono" value={form.price2 ?? form.price ?? 0} onChange={e=>setForm({...form, price2:Number(e.target.value)||0})}/></div>
+          <div className="field"><label>단가3 (원)</label><input className="input mono" value={form.price3 ?? form.price ?? 0} onChange={e=>setForm({...form, price3:Number(e.target.value)||0})}/></div>
           <div className="field" style={{gridColumn:'span 2'}}><label>비고</label><input className="input" value={form.memo||''} onChange={e=>setForm({...form, memo:e.target.value})}/></div>
         </div>
         <div className="row" style={{justifyContent:'flex-end', gap:8, padding:16, background:'#FBF8F0', borderTop:'1px solid var(--line)'}}>
