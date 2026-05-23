@@ -364,6 +364,7 @@ table.tx tr:hover td{ background: #FBF8F0;}
 .invoice-foot .cell:last-child{ border-right:none;}
 .invoice-foot .lbl{ color:#444; font-size: 14px; }
 .invoice-foot .val{ font-size: 21px; font-weight: 700; font-family: var(--font-mono);}
+.invoice-foot .acct{ font-size: 21px; font-weight: 700; letter-spacing: 0.5px;}
 
 .split-grid{ display:grid; grid-template-columns: 380px 1fr; gap: 22px;}
 .list-card{ background: var(--paper); border:1px solid var(--line); border-radius: var(--radius-lg); overflow:hidden;}

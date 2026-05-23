@@ -975,7 +975,7 @@ const EntryScreen = ({
   const [payment, setPayment] = useState(editTx?.method || 'credit');
   const [memo, setMemo] = useState(editTx?.memo || '');
   const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : false);
-  const [boxCount, setBoxCount] = useState(editTx?.boxCount || 0);
+  const [boxOverride, setBoxOverride] = useState(editTx ? editTx.boxCount ?? null : null);
   const [savedToast, setSavedToast] = useState(false);
   const BOX_UNIT = 500;
   const updateRow = (key, patch) => {
@@ -995,6 +995,8 @@ const EntryScreen = ({
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
+  const autoBoxCount = rows.reduce((a, r) => a + (r.itemId ? Number(r.qty) || 0 : 0), 0); // 수량 합계
+  const boxCount = boxOverride != null ? boxOverride : autoBoxCount; // 비override 시 자동 카운팅
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT; // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct); // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
@@ -1333,12 +1335,27 @@ const EntryScreen = ({
     style: {
       marginTop: 8
     }
-  }, "\uC0C1\uC790 \uC218 (\uAC1C\uB2F9 ", window.fmt(BOX_UNIT), "\uC6D0 \uACF5\uC81C)"), /*#__PURE__*/React.createElement("input", {
+  }, "\uC0C1\uC790 \uC218 (\uAC1C\uB2F9 ", window.fmt(BOX_UNIT), "\uC6D0 \uACF5\uC81C)", boxOverride == null ? /*#__PURE__*/React.createElement("span", {
+    className: "muted",
+    style: {
+      marginLeft: 6,
+      fontSize: 12
+    }
+  }, "\xB7 \uC218\uB7C9 \uC790\uB3D9\uD569\uACC4") : /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm btn-ghost",
+    style: {
+      marginLeft: 6,
+      height: 22,
+      padding: '0 6px',
+      fontSize: 12
+    },
+    onClick: () => setBoxOverride(null)
+  }, "\uC790\uB3D9\uC73C\uB85C")), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
     type: "number",
     min: "0",
     value: boxCount,
-    onChange: e => setBoxCount(Math.max(0, Number(e.target.value) || 0)),
+    onChange: e => setBoxOverride(Math.max(0, Number(e.target.value) || 0)),
     placeholder: "0"
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
@@ -1557,7 +1574,39 @@ const InvoicePage = ({
     className: "invoice-copy"
   }, "(", copy, ")")), /*#__PURE__*/React.createElement("table", {
     className: "inv-head"
-  }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("colgroup", null, /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '3%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '9%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '25%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '3%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '9%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '21%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '8%'
+    }
+  }), /*#__PURE__*/React.createElement("col", {
+    style: {
+      width: '22%'
+    }
+  })), /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     className: "side",
     rowSpan: 4
   }, "\uACF5", /*#__PURE__*/React.createElement("br", null), "\uAE09", /*#__PURE__*/React.createElement("br", null), "\uBC1B", /*#__PURE__*/React.createElement("br", null), "\uB294", /*#__PURE__*/React.createElement("br", null), "\uC790"), /*#__PURE__*/React.createElement("td", {
@@ -1677,10 +1726,10 @@ const InvoicePage = ({
     className: "lbl"
   }, "\uACB0\uC81C / \uC785\uAE08\uACC4\uC88C"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 12
+      fontSize: 14
     }
   }, /*#__PURE__*/React.createElement("b", null, "\uB18D\uD611"), " ", /*#__PURE__*/React.createElement("span", {
-    className: "mono"
+    className: "mono acct"
   }, "352-1981-0292-63")), /*#__PURE__*/React.createElement("div", {
     className: "lbl",
     style: {

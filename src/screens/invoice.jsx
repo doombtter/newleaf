@@ -13,6 +13,16 @@ const InvoicePage = ({ data, copy }) => {
       <div className="invoice-title">거 래 명 세 표 <span className="invoice-copy">({copy})</span></div>
 
       <table className="inv-head">
+        <colgroup>
+          <col style={{width:'3%'}}/>
+          <col style={{width:'9%'}}/>
+          <col style={{width:'25%'}}/>
+          <col style={{width:'3%'}}/>
+          <col style={{width:'9%'}}/>
+          <col style={{width:'21%'}}/>
+          <col style={{width:'8%'}}/>
+          <col style={{width:'22%'}}/>
+        </colgroup>
         <tbody>
           <tr>
             <td className="side" rowSpan={4}>공<br/>급<br/>받<br/>는<br/>자</td>
@@ -102,7 +112,7 @@ const InvoicePage = ({ data, copy }) => {
         </div>
         <div className="cell">
           <div className="lbl">결제 / 입금계좌</div>
-          <div style={{fontSize:12}}><b>농협</b> <span className="mono">352-1981-0292-63</span></div>
+          <div style={{fontSize:14}}><b>농협</b> <span className="mono acct">352-1981-0292-63</span></div>
           <div className="lbl" style={{marginTop:4}}>예금주: {window.BIZ.owner}</div>
         </div>
       </div>
