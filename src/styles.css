@@ -325,6 +325,16 @@ table.tx tr:hover td{ background: #FBF8F0;}
   padding: 2px 0 8px;
   border-bottom: 2px solid #111;
 }
+.invoice-copy{ font-size: 12px; font-weight: 400; letter-spacing: 0; color:#333;}
+.inv-head{ width:100%; border-collapse:collapse; border:1px solid #111; margin-top:6px; table-layout:fixed;}
+.inv-head td{ border:1px solid #111; padding:3px 8px; font-size:16px; vertical-align:middle; word-break:break-all;}
+.inv-head .side{ width:20px; text-align:center; font-weight:700; background:#F0EBDF; font-size:11px; line-height:1.25; padding:2px;}
+.inv-head .lab{ background:#FBF7EE; color:#333; font-weight:600; font-size:12.5px; text-align:center; white-space:nowrap; width:62px; line-height:1.15;}
+.inv-head .val{ font-size:16px;}
+.inv-head .val.nm{ font-weight:700;}
+.inv-head .val.reg{ font-weight:700; font-size:18px; letter-spacing:1px; text-align:center;}
+.inv-head .val.amt{ font-weight:700; font-size:18px; text-align:right;}
+.inv-head small{ color:#666; font-size:0.72em; font-weight:400;}
 .invoice-sub{ display:flex; justify-content:space-between; padding: 4px 4px 8px; font-size: 13px;}
 .invoice-info{
   display: grid; grid-template-columns: 1fr; gap: 0;
@@ -341,10 +351,11 @@ table.tx tr:hover td{ background: #FBF8F0;}
 .invoice-info td.k{ width: 72px; color: #444; font-weight: 600; border-right: 1px dashed #999; white-space: nowrap;}
 .invoice-table{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 17px; table-layout: fixed;}
 .invoice-table td.l{ word-break: break-all; text-align:left; font-size: 21px; font-weight: 700;}
-.invoice-table th, .invoice-table td{ border: 1px solid #111; padding: 0 6px; text-align: center; line-height: 1.05; height: 19px;}
+.invoice-table th, .invoice-table td{ border: 1px solid #111; padding: 0 6px; text-align: center; line-height: 1; height: 24px;}
+.invoice-table tbody tr{ height: 24px;}
 .invoice-table th{ background:#F0EBDF; font-weight:600; font-size: 16px; white-space:nowrap;}
 .invoice-table td.r{ text-align:right; font-family: var(--font-mono);}
-.invoice-table tr.empty td{ height: 19px;}
+.invoice-table tr td, .invoice-table tr.empty td{ height: 24px;}
 .invoice-foot{
   display:grid; grid-template-columns: 2fr 1fr 2fr; gap: 0;
   border:1px solid #111; border-top:none;
