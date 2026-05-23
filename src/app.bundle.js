@@ -25,9 +25,18 @@
       if (i.stock == null) i.stock = 0;
       if (i.safety == null) i.safety = 0;
       if (!i.initials && i.name && window.getInitials) i.initials = window.getInitials(i.name);
+      // 단가1/2/3 보정(기존 단일 price → 세 칸 채움)
+      const base = Number(i.price) || 0;
+      if (i.price1 == null) i.price1 = base;
+      if (i.price2 == null) i.price2 = base;
+      if (i.price3 == null) i.price3 = base;
     });
     (data.customers || []).forEach(c => {
       if (c.due == null) c.due = 0;
+      if (c.priceLevel == null) {
+        // 기존 tier → 레벨 매핑(standard=1, regular=2, wholesale=3)
+        c.priceLevel = c.tier === 'wholesale' ? 3 : c.tier === 'regular' ? 2 : 1;
+      }
     });
     (data.transactions || []).forEach(t => {
       if (t.paid == null) t.paid = 0;
@@ -282,6 +291,8 @@ window.removeTransaction = id => {
 // 저장된 거래 → 거래명세서 미리보기 데이터
 window.txToInvoice = tx => {
   if (!tx) return null;
+  const fullTotal = tx.fullTotal != null ? tx.fullTotal : (tx.subtotal || 0) + (tx.vat || 0);
+  const exBoxTotal = tx.total != null ? tx.total : fullTotal;
   return {
     customer: window.findCustomer(tx.customerId),
     date: tx.date,
@@ -294,16 +305,35 @@ window.txToInvoice = tx => {
     })),
     subtotal: tx.subtotal,
     vat: tx.vat,
-    total: tx.total,
+    fullTotal,
+    // 합계금액(VAT 포함, 상자 공제 전)
+    total: fullTotal,
+    // 헤더 합계금액 표기용
+    exBoxTotal,
+    // 상자제외 청구금액
+    boxCount: tx.boxCount || 0,
+    boxDeduct: tx.boxDeduct || 0,
+    prevDue: tx.prevDue != null ? tx.prevDue : window.findCustomer(tx.customerId)?.due || 0,
     payment: tx.method,
     memo: tx.memo,
     txId: tx.id
   };
 };
+
+// 단가 레벨(거래처가 단가1/2/3 중 선택)
+window.levelLabel = lv => `단가${Number(lv) || 1}`;
+window.itemLevelPrice = (item, level) => {
+  if (!item) return 0;
+  const lv = Number(level) || 1;
+  const v = item['price' + lv];
+  return v === 0 || v ? Number(v) : Number(item.price) || 0;
+};
+
+// 호환: 기존 tier 헬퍼 유지(미사용 화면 대비)
 window.tierLabel = tier => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = tier => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
 
-// 거래처별 전용 단가: state.customerPrices[customerId][itemId] = price
+// 거래처별 전용 단가(예외 단가): state.customerPrices[customerId][itemId] = price
 window.getCustomerPrice = (itemId, customerId) => {
   const cp = window.Store?.state?.customerPrices;
   const v = cp && cp[customerId] && cp[customerId][itemId];
@@ -314,7 +344,7 @@ window.setCustomerPrice = (customerId, itemId, price) => {
   if (!s.customerPrices) s.customerPrices = {};
   if (!s.customerPrices[customerId]) s.customerPrices[customerId] = {};
   if (price === '' || price === null || price === undefined || isNaN(Number(price))) {
-    delete s.customerPrices[customerId][itemId]; // 비우면 자동가로 복귀
+    delete s.customerPrices[customerId][itemId]; // 비우면 단가 레벨가로 복귀
   } else {
     s.customerPrices[customerId][itemId] = Number(price);
   }
@@ -324,8 +354,15 @@ window.priceFor = (item, customer) => {
   if (customer) {
     const explicit = window.getCustomerPrice(item.id, customer.id);
     if (explicit !== undefined) return explicit;
+    return window.itemLevelPrice(item, customer.priceLevel);
   }
-  return Math.round(item.price * window.tierMultiplier(customer?.tier || 'standard'));
+  return window.itemLevelPrice(item, 1);
+};
+
+// 거래처의 현재 미수금(이 거래 반영 전 잔액) — 미수금 자동 합산 표시용
+window.customerDue = customerId => {
+  const c = window.findCustomer(customerId);
+  return c ? c.due || 0 : 0;
 };
 //# sourceURL=saeipari/seed.js
 
@@ -897,7 +934,7 @@ const ItemAutocomplete = ({
     }
   }, it.spec)), /*#__PURE__*/React.createElement("div", {
     className: "meta mono"
-  }, window.fmt(it.price), "\uC6D0")))));
+  }, window.fmt(window.itemLevelPrice(it, 1)), "\uC6D0")))));
 };
 const blankRow = () => ({
   key: Math.random().toString(36).slice(2),
@@ -935,10 +972,12 @@ const EntryScreen = ({
     }
     return [blankRow()];
   });
-  const [payment, setPayment] = useState(editTx?.method || 'cash');
+  const [payment, setPayment] = useState(editTx?.method || 'credit');
   const [memo, setMemo] = useState(editTx?.memo || '');
-  const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : true);
+  const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : false);
+  const [boxCount, setBoxCount] = useState(editTx?.boxCount || 0);
   const [savedToast, setSavedToast] = useState(false);
+  const BOX_UNIT = 500;
   const updateRow = (key, patch) => {
     setRows(rs => {
       const next = rs.map(r => r.key === key ? {
@@ -956,7 +995,11 @@ const EntryScreen = ({
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
+  const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT; // 상자수 × 500
+  const exBoxTotal = Math.max(0, total - boxDeduct); // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
+  const prevDue = customer?.due || 0; // 현 거래 이전까지 미수금
+
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
   const lineData = () => finalRows().map(r => ({
     itemId: r.itemId,
@@ -983,10 +1026,11 @@ const EntryScreen = ({
   };
   const persist = async () => {
     const lines = lineData();
+    const charged = exBoxTotal; // 상자제외 청구금액(실제 청구액)
     if (isEdit) {
       const old = state.transactions.find(t => t.id === editTx.id);
       if (old) applyEffects(old, -1); // 기존 효과 원복
-      const keepPaid = old && old.method === 'credit' ? Math.min(old.paid || 0, total) : payment === 'credit' ? 0 : total;
+      const keepPaid = old && old.method === 'credit' ? Math.min(old.paid || 0, charged) : payment === 'credit' ? 0 : charged;
       const tx = {
         ...old,
         id: editTx.id,
@@ -994,9 +1038,12 @@ const EntryScreen = ({
         customerId,
         subtotal,
         vat,
-        total,
+        fullTotal: subtotal + vat,
+        boxCount: Number(boxCount) || 0,
+        boxDeduct,
+        total: charged,
         method: payment,
-        paid: payment === 'credit' ? keepPaid : total,
+        paid: payment === 'credit' ? keepPaid : charged,
         items: lines.length,
         lines,
         memo,
@@ -1023,8 +1070,12 @@ const EntryScreen = ({
       customerId,
       subtotal,
       vat,
-      total,
-      paid: payment === 'credit' ? 0 : total,
+      fullTotal: subtotal + vat,
+      boxCount: Number(boxCount) || 0,
+      boxDeduct,
+      total: charged,
+      prevDue,
+      paid: payment === 'credit' ? 0 : charged,
       method: payment,
       items: lines.length,
       lines,
@@ -1064,17 +1115,7 @@ const EntryScreen = ({
       return;
     }
     const tx = await persist();
-    onPrint && onPrint({
-      customer,
-      date,
-      rows: finalRows(),
-      subtotal,
-      vat,
-      total,
-      payment,
-      memo,
-      txId: tx.id
-    });
+    onPrint && onPrint(window.txToInvoice(tx));
   };
   useEffect(() => {
     const onSaveKey = () => {
@@ -1190,7 +1231,7 @@ const EntryScreen = ({
   }, state.customers.map(c => /*#__PURE__*/React.createElement("option", {
     key: c.id,
     value: c.id
-  }, c.name, " (", window.tierLabel(c.tier), ")")))), /*#__PURE__*/React.createElement("div", {
+  }, c.name, " (", window.levelLabel(c.priceLevel), ")")))), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uC774\uC804 \uBBF8\uC218\uAE08"), /*#__PURE__*/React.createElement("div", {
     className: "input mono",
@@ -1288,6 +1329,17 @@ const EntryScreen = ({
     value: memo,
     onChange: e => setMemo(e.target.value),
     placeholder: "\uAC70\uB798 \uAD00\uB828 \uBA54\uBAA8 (\uC120\uD0DD)"
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      marginTop: 8
+    }
+  }, "\uC0C1\uC790 \uC218 (\uAC1C\uB2F9 ", window.fmt(BOX_UNIT), "\uC6D0 \uACF5\uC81C)"), /*#__PURE__*/React.createElement("input", {
+    className: "input mono",
+    type: "number",
+    min: "0",
+    value: boxCount,
+    onChange: e => setBoxCount(Math.max(0, Number(e.target.value) || 0)),
+    placeholder: "0"
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uACB0\uC81C \uBC29\uC2DD"), /*#__PURE__*/React.createElement("div", {
@@ -1353,8 +1405,19 @@ const EntryScreen = ({
   }, window.fmt(vat), "\uC6D0")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
     className: "lbl"
   }, "\uD569\uACC4"), " ", /*#__PURE__*/React.createElement("span", {
+    className: "val mono"
+  }, window.fmt(total), "\uC6D0")), boxCount > 0 && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "lbl"
+  }, "\uC0C1\uC790\uACF5\uC81C"), " ", /*#__PURE__*/React.createElement("span", {
+    className: "val mono",
+    style: {
+      color: 'var(--warn)'
+    }
+  }, "-", window.fmt(boxDeduct), "\uC6D0")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", {
+    className: "lbl"
+  }, "\uC0C1\uC790\uC81C\uC678 \uCCAD\uAD6C"), " ", /*#__PURE__*/React.createElement("span", {
     className: "val grand mono"
-  }, window.fmt(total), "\uC6D0"))), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(exBoxTotal), "\uC6D0"))), /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       gap: 10
@@ -1480,6 +1543,9 @@ const InvoicePage = ({
     vat,
     total
   } = data;
+  const exBoxTotal = data.exBoxTotal != null ? data.exBoxTotal : data.total != null ? data.total : subtotal;
+  const prevDue = data.prevDue != null ? data.prevDue : customer?.due || 0;
+  const boxCount = data.boxCount || 0;
   const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
   const blankCount = Math.max(0, 40 - rows.length);
@@ -1597,15 +1663,15 @@ const InvoicePage = ({
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "\uC0C1\uC790\uC678 \uD569\uACC4"), /*#__PURE__*/React.createElement("div", {
+  }, "\uC0C1\uC790\uC678 \uD569\uACC4", boxCount > 0 ? ` (상자 ${boxCount}개 공제)` : ''), /*#__PURE__*/React.createElement("div", {
     className: "val"
-  }, window.fmt(subtotal))), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(exBoxTotal))), /*#__PURE__*/React.createElement("div", {
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
-  }, "\uBBF8\uC218\uAE08"), /*#__PURE__*/React.createElement("div", {
+  }, "\uBBF8\uC218\uAE08 (\uC774\uC804\uAE4C\uC9C0)"), /*#__PURE__*/React.createElement("div", {
     className: "val"
-  }, window.fmt(customer?.due || 0))), /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(prevDue))), /*#__PURE__*/React.createElement("div", {
     className: "cell"
   }, /*#__PURE__*/React.createElement("div", {
     className: "lbl"
@@ -1753,6 +1819,7 @@ const CustomersScreen = ({
       address: '',
       type: 'individual',
       tier: 'standard',
+      priceLevel: 1,
       due: 0,
       last: '',
       memo: ''
@@ -1848,7 +1915,7 @@ const CustomersScreen = ({
     className: "nm"
   }, cu.name), /*#__PURE__*/React.createElement("div", {
     className: "sub"
-  }, window.tierLabel(cu.tier), " \xB7 ", cu.phone)), /*#__PURE__*/React.createElement("div", {
+  }, window.levelLabel(cu.priceLevel), " \xB7 ", cu.phone)), /*#__PURE__*/React.createElement("div", {
     className: 'due ' + ((cu.due || 0) === 0 ? 'zero' : '')
   }, (cu.due || 0) === 0 ? '—' : window.fmt(cu.due) + '원'))))), /*#__PURE__*/React.createElement("div", {
     className: "col",
@@ -1921,9 +1988,9 @@ const CustomersScreen = ({
     className: "kv"
   }, /*#__PURE__*/React.createElement("span", {
     className: "k"
-  }, "\uB2E8\uAC00 \uB4F1\uAE09"), /*#__PURE__*/React.createElement("span", {
+  }, "\uC801\uC6A9 \uB2E8\uAC00"), /*#__PURE__*/React.createElement("span", {
     className: "v"
-  }, window.tierLabel(c.tier))), /*#__PURE__*/React.createElement("div", {
+  }, window.levelLabel(c.priceLevel))), /*#__PURE__*/React.createElement("div", {
     className: "kv"
   }, /*#__PURE__*/React.createElement("span", {
     className: "k"
@@ -2101,56 +2168,50 @@ const CustomersScreen = ({
       fontSize: 13,
       color: 'var(--ink-soft)'
     }
-  }, "\uD488\uBAA9\uBCC4\uB85C ", /*#__PURE__*/React.createElement("b", null, c.name), " \uC804\uC6A9 \uB2E8\uAC00\uB97C \uC9C1\uC811 \uC785\uB825\uD558\uC138\uC694. \uBE44\uC6CC\uB450\uBA74 \uB4F1\uAE09 \uC790\uB3D9\uAC00(", window.tierLabel(c.tier), ")\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4."), /*#__PURE__*/React.createElement("table", {
+  }, /*#__PURE__*/React.createElement("b", null, c.name), "\uC5D0\uB294 \uD604\uC7AC ", /*#__PURE__*/React.createElement("b", null, window.levelLabel(c.priceLevel)), "\uAC00 \uC801\uC6A9\uB429\uB2C8\uB2E4(\uC815\uBCF4 \uC218\uC815\uC5D0\uC11C \uBCC0\uACBD). \uD2B9\uC815 \uD488\uBAA9\uB9CC \uB2E4\uB974\uAC8C \uBC1B\uC744 \uB550 \"\uC804\uC6A9 \uB2E8\uAC00\"\uC5D0 \uC9C1\uC811 \uC785\uB825\uD558\uC138\uC694(\uBE44\uC6B0\uBA74 ", window.levelLabel(c.priceLevel), " \uC801\uC6A9)."), /*#__PURE__*/React.createElement("table", {
     className: "tx"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("th", null, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", {
     className: "num"
-  }, "\uAE30\uBCF8\uAC00"), /*#__PURE__*/React.createElement("th", {
+  }, "\uB2E8\uAC001"), /*#__PURE__*/React.createElement("th", {
     className: "num"
-  }, "\uC790\uB3D9\uAC00(", window.tierLabel(c.tier), ")"), /*#__PURE__*/React.createElement("th", {
+  }, "\uB2E8\uAC002"), /*#__PURE__*/React.createElement("th", {
+    className: "num"
+  }, "\uB2E8\uAC003"), /*#__PURE__*/React.createElement("th", {
     className: "num",
     style: {
-      width: 160
+      width: 150
     }
-  }, "\uC804\uC6A9 \uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 90
-    }
-  }))), /*#__PURE__*/React.createElement("tbody", null, state.items.map(it => {
+  }, "\uC804\uC6A9 \uB2E8\uAC00"))), /*#__PURE__*/React.createElement("tbody", null, state.items.map(it => {
     const explicit = window.getCustomerPrice(it.id, c.id);
-    const auto = Math.round(it.price * window.tierMultiplier(c.tier));
+    const lv = Number(c.priceLevel) || 1;
+    const cell = n => /*#__PURE__*/React.createElement("td", {
+      className: "num",
+      style: lv === n ? {
+        background: 'var(--green-50)',
+        fontWeight: 700
+      } : {}
+    }, window.fmt(window.itemLevelPrice(it, n)), "\uC6D0");
     return /*#__PURE__*/React.createElement("tr", {
       key: it.id
     }, /*#__PURE__*/React.createElement("td", null, it.name, " ", it.variety && /*#__PURE__*/React.createElement("span", {
       className: "muted"
-    }, "\xB7 ", it.variety)), /*#__PURE__*/React.createElement("td", null, it.spec), /*#__PURE__*/React.createElement("td", {
-      className: "num"
-    }, window.fmt(it.price), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
-      className: "num"
-    }, window.fmt(auto), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+    }, "\xB7 ", it.variety)), /*#__PURE__*/React.createElement("td", null, it.spec), cell(1), cell(2), cell(3), /*#__PURE__*/React.createElement("td", {
       className: "num"
     }, /*#__PURE__*/React.createElement("input", {
       className: "input mono",
       style: {
         height: 34,
         textAlign: 'right',
-        width: 140
+        width: 130
       },
       defaultValue: explicit !== undefined ? explicit : '',
-      placeholder: `자동 ${window.fmt(auto)}`,
+      placeholder: `${window.fmt(window.itemLevelPrice(it, lv))}`,
       onBlur: async e => {
         window.setCustomerPrice(c.id, it.id, e.target.value.trim());
         await window.Store.commit();
         force();
       }
-    })), /*#__PURE__*/React.createElement("td", null, explicit !== undefined ? /*#__PURE__*/React.createElement("span", {
-      className: "tag tag-green"
-    }, "\uC804\uC6A9\uAC00") : /*#__PURE__*/React.createElement("span", {
-      className: "muted",
-      style: {
-        fontSize: 12
-      }
-    }, "\uC790\uB3D9")));
+    })));
   }), state.items.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: "6",
     style: {
@@ -2258,20 +2319,20 @@ const CustomerEditForm = ({
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
-  }, /*#__PURE__*/React.createElement("label", null, "\uB2E8\uAC00 \uB4F1\uAE09"), /*#__PURE__*/React.createElement("select", {
+  }, /*#__PURE__*/React.createElement("label", null, "\uC801\uC6A9 \uB2E8\uAC00 \uC120\uD0DD"), /*#__PURE__*/React.createElement("select", {
     className: "select",
-    value: form.tier || 'standard',
+    value: form.priceLevel || 1,
     onChange: e => setForm({
       ...form,
-      tier: e.target.value
+      priceLevel: Number(e.target.value)
     })
   }, /*#__PURE__*/React.createElement("option", {
-    value: "standard"
-  }, "\uC77C\uBC18\uAC00"), /*#__PURE__*/React.createElement("option", {
-    value: "regular"
-  }, "\uB2E8\uACE8\uAC00 (-7%)"), /*#__PURE__*/React.createElement("option", {
-    value: "wholesale"
-  }, "\uB3C4\uB9E4\uAC00 (-15%)"))), /*#__PURE__*/React.createElement("div", {
+    value: 1
+  }, "\uB2E8\uAC001"), /*#__PURE__*/React.createElement("option", {
+    value: 2
+  }, "\uB2E8\uAC002"), /*#__PURE__*/React.createElement("option", {
+    value: 3
+  }, "\uB2E8\uAC003"))), /*#__PURE__*/React.createElement("div", {
     className: "field"
   }, /*#__PURE__*/React.createElement("label", null, "\uBBF8\uC218\uAE08 \uC794\uC561 (\uC218\uB3D9 \uC870\uC815)"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
@@ -2391,26 +2452,26 @@ window.CustomersScreen = CustomersScreen;
 //# sourceURL=saeipari/screens/customers.jsx
 
 /* ===== screens/inventory.jsx ===== */
-// 재고/품목 관리
+// 품목 관리 (단가1·2·3)
 const InventoryScreen = () => {
   const state = window.Store.state;
-  const [filter, setFilter] = React.useState('all');
   const [editing, setEditing] = React.useState(null);
   const [creating, setCreating] = React.useState(false);
   const [presetOpen, setPresetOpen] = React.useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
-  let items = state.items;
-  if (filter === 'low') items = items.filter(i => i.stock < i.safety);
-  if (filter === 'good') items = items.filter(i => i.stock >= i.safety);
+  const items = state.items;
   const handleSave = async form => {
     if (creating) {
-      const id = state.nextItemId || Math.max(...state.items.map(x => x.id)) + 1;
+      const id = state.nextItemId || Math.max(0, ...state.items.map(x => x.id)) + 1;
       state.nextItemId = id + 1;
       state.items.push({
         ...form,
         id,
         initials: window.getInitials(form.name),
-        useCount: 0
+        useCount: 0,
+        stock: 0,
+        safety: 0,
+        growing: 0
       });
     } else {
       Object.assign(editing, form, {
@@ -2434,10 +2495,9 @@ const InventoryScreen = () => {
     tray: 50,
     spec: '50구',
     unit: 'tray',
-    price: 15000,
-    stock: 0,
-    safety: 10,
-    growing: 40,
+    price1: 15000,
+    price2: 15000,
+    price3: 15000,
     memo: ''
   });
   return /*#__PURE__*/React.createElement("div", {
@@ -2448,7 +2508,7 @@ const InventoryScreen = () => {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
-      gridTemplateColumns: 'repeat(4,1fr)',
+      gridTemplateColumns: 'repeat(2,1fr)',
       gap: 14
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -2468,67 +2528,20 @@ const InventoryScreen = () => {
     className: "stat"
   }, /*#__PURE__*/React.createElement("div", {
     className: "label"
-  }, "\uC7AC\uACE0 \uCD1D\uB7C9"), /*#__PURE__*/React.createElement("div", {
+  }, "\uAC70\uB798\uCC98 \uC218"), /*#__PURE__*/React.createElement("div", {
     className: "value"
-  }, state.items.reduce((a, i) => a + (i.stock || 0), 0), /*#__PURE__*/React.createElement("span", {
+  }, state.customers.length, /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 14,
       color: 'var(--ink-muted)',
       marginLeft: 6,
       fontFamily: 'inherit'
     }
-  }, "\uD2B8\uB808\uC774"))), /*#__PURE__*/React.createElement("div", {
-    className: "stat danger"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "\uC548\uC804\uC7AC\uACE0 \uBBF8\uB2EC"), /*#__PURE__*/React.createElement("div", {
-    className: "value"
-  }, state.items.filter(i => i.stock < i.safety).length, /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      color: 'var(--ink-muted)',
-      marginLeft: 6,
-      fontFamily: 'inherit'
-    }
-  }, "\uC885")), /*#__PURE__*/React.createElement("div", {
-    className: "delta",
-    style: {
-      color: 'var(--danger)'
-    }
-  }, "\uC989\uC2DC \uD30C\uC885 \uAC80\uD1A0")), /*#__PURE__*/React.createElement("div", {
-    className: "stat"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "label"
-  }, "\uC9C4\uD589 \uC911 \uD30C\uC885 (\uCD9C\uD558 \uC608\uC815)"), /*#__PURE__*/React.createElement("div", {
-    className: "value"
-  }, state.sowings.filter(s => s.status !== 'shipped').reduce((a, s) => a + (s.trays || 0), 0), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 14,
-      color: 'var(--ink-muted)',
-      marginLeft: 6,
-      fontFamily: 'inherit'
-    }
-  }, "\uD2B8\uB808\uC774")))), /*#__PURE__*/React.createElement("div", {
+  }, "\uACF3")))), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "row",
-    style: {
-      gap: 14
-    }
-  }, /*#__PURE__*/React.createElement("h2", null, "\uD488\uBAA9 \uB9C8\uC2A4\uD130 / \uC7AC\uACE0 \uD604\uD669"), /*#__PURE__*/React.createElement("div", {
-    className: "seg"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: filter === 'all' ? 'on' : '',
-    onClick: () => setFilter('all')
-  }, "\uC804\uCCB4"), /*#__PURE__*/React.createElement("button", {
-    className: filter === 'low' ? 'on' : '',
-    onClick: () => setFilter('low')
-  }, "\uC548\uC804\uC7AC\uACE0 \uBBF8\uB2EC"), /*#__PURE__*/React.createElement("button", {
-    className: filter === 'good' ? 'on' : '',
-    onClick: () => setFilter('good')
-  }, "\uC815\uC0C1"))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h2", null, "\uD488\uBAA9 / \uB2E8\uAC00 \uAD00\uB9AC"), /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       gap: 8
@@ -2552,96 +2565,67 @@ const InventoryScreen = () => {
     className: "tx"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "\uD488\uBAA9"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: 80
+      width: 100
     }
   }, "\uD488\uC885"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: 70
+      width: 80
     }
   }, "\uADDC\uACA9"), /*#__PURE__*/React.createElement("th", {
     className: "num",
     style: {
-      width: 100
+      width: 110
     }
-  }, "\uAE30\uBCF8\uB2E8\uAC00"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 200
-    }
-  }, "\uD604\uC7AC \uC7AC\uACE0 / \uC548\uC804\uC7AC\uACE0"), /*#__PURE__*/React.createElement("th", {
+  }, "\uB2E8\uAC001"), /*#__PURE__*/React.createElement("th", {
     className: "num",
-    style: {
-      width: 80
-    }
-  }, "\uC721\uBB18\uC77C"), /*#__PURE__*/React.createElement("th", {
-    className: "num",
-    style: {
-      width: 80
-    }
-  }, "\uD310\uB9E4\uBE48\uB3C4"), /*#__PURE__*/React.createElement("th", {
-    style: {
-      width: 80
-    }
-  }, "\uC0C1\uD0DC"), /*#__PURE__*/React.createElement("th", {
     style: {
       width: 110
     }
-  }))), /*#__PURE__*/React.createElement("tbody", null, items.map(it => {
-    const ratio = it.stock / Math.max(1, it.safety * 2);
-    const cls = it.stock < it.safety ? 'danger' : it.stock < it.safety * 1.5 ? 'warn' : '';
-    return /*#__PURE__*/React.createElement("tr", {
-      key: it.id
-    }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, it.name)), /*#__PURE__*/React.createElement("td", null, it.variety || '—'), /*#__PURE__*/React.createElement("td", null, it.spec), /*#__PURE__*/React.createElement("td", {
-      className: "num"
-    }, window.fmt(it.price), "\uC6D0"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
-      className: "row",
-      style: {
-        justifyContent: 'space-between',
-        marginBottom: 4,
-        fontSize: 12
-      }
-    }, /*#__PURE__*/React.createElement("b", {
-      className: "mono"
-    }, it.stock, " \uD2B8\uB808\uC774"), /*#__PURE__*/React.createElement("span", {
-      className: "muted mono"
-    }, "\uC548\uC804 ", it.safety)), /*#__PURE__*/React.createElement("div", {
-      className: "stock-bar"
-    }, /*#__PURE__*/React.createElement("div", {
-      className: 'fill ' + cls,
-      style: {
-        width: Math.min(100, ratio * 100) + '%'
-      }
-    }))), /*#__PURE__*/React.createElement("td", {
-      className: "num"
-    }, it.growing, "\uC77C"), /*#__PURE__*/React.createElement("td", {
-      className: "num"
-    }, it.useCount || 0, "\uD68C"), /*#__PURE__*/React.createElement("td", null, it.stock < it.safety ? /*#__PURE__*/React.createElement("span", {
-      className: "tag tag-danger"
-    }, "\uBBF8\uB2EC") : it.stock < it.safety * 1.5 ? /*#__PURE__*/React.createElement("span", {
-      className: "tag tag-warn"
-    }, "\uBD80\uC871") : /*#__PURE__*/React.createElement("span", {
-      className: "tag tag-green"
-    }, "\uC815\uC0C1")), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
-      className: "row",
-      style: {
-        gap: 4
-      }
-    }, /*#__PURE__*/React.createElement("button", {
-      className: "btn btn-sm btn-ghost",
-      onClick: () => {
-        setEditing(it);
-        setCreating(false);
-      }
-    }, "\uC218\uC815"), /*#__PURE__*/React.createElement("button", {
-      className: "btn btn-sm btn-ghost",
-      style: {
-        color: 'var(--danger)'
-      },
-      onClick: () => handleDelete(it),
-      title: "\uC0AD\uC81C"
-    }, /*#__PURE__*/React.createElement(Icons.Trash, {
-      size: 14
-    })))));
-  }))))), editing && /*#__PURE__*/React.createElement(ItemEditModal, {
+  }, "\uB2E8\uAC002"), /*#__PURE__*/React.createElement("th", {
+    className: "num",
+    style: {
+      width: 110
+    }
+  }, "\uB2E8\uAC003"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: 110
+    }
+  }))), /*#__PURE__*/React.createElement("tbody", null, items.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+    colSpan: "7",
+    style: {
+      textAlign: 'center',
+      padding: 40,
+      color: 'var(--ink-muted)'
+    }
+  }, "\uB4F1\uB85D\uB41C \uD488\uBAA9\uC774 \uC5C6\uC2B5\uB2C8\uB2E4. \"\uC2E0\uADDC \uD488\uBAA9\"\uC73C\uB85C \uCD94\uAC00\uD558\uC138\uC694.")), items.map(it => /*#__PURE__*/React.createElement("tr", {
+    key: it.id
+  }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, it.name)), /*#__PURE__*/React.createElement("td", null, it.variety || '—'), /*#__PURE__*/React.createElement("td", null, it.spec), /*#__PURE__*/React.createElement("td", {
+    className: "num"
+  }, window.fmt(window.itemLevelPrice(it, 1)), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+    className: "num"
+  }, window.fmt(window.itemLevelPrice(it, 2)), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
+    className: "num"
+  }, window.fmt(window.itemLevelPrice(it, 3)), "\uC6D0"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
+    className: "row",
+    style: {
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm btn-ghost",
+    onClick: () => {
+      setEditing(it);
+      setCreating(false);
+    }
+  }, "\uC218\uC815"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-sm btn-ghost",
+    style: {
+      color: 'var(--danger)'
+    },
+    onClick: () => handleDelete(it),
+    title: "\uC0AD\uC81C"
+  }, /*#__PURE__*/React.createElement(Icons.Trash, {
+    size: 14
+  })))))))))), editing && /*#__PURE__*/React.createElement(ItemEditModal, {
     item: editing,
     creating: creating,
     onSave: handleSave,
@@ -2756,39 +2740,30 @@ const ItemEditModal = ({
     value: n
   })))), /*#__PURE__*/React.createElement("div", {
     className: "field"
-  }, /*#__PURE__*/React.createElement("label", null, "\uAE30\uBCF8 \uB2E8\uAC00 (\uC6D0)"), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("label", null, "\uB2E8\uAC001 (\uC6D0)"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
-    value: form.price || 0,
+    value: form.price1 ?? form.price ?? 0,
     onChange: e => setForm({
       ...form,
-      price: Number(e.target.value) || 0
+      price1: Number(e.target.value) || 0
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
-  }, /*#__PURE__*/React.createElement("label", null, "\uD604\uC7AC \uC7AC\uACE0 (\uD2B8\uB808\uC774)"), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("label", null, "\uB2E8\uAC002 (\uC6D0)"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
-    value: form.stock || 0,
+    value: form.price2 ?? form.price ?? 0,
     onChange: e => setForm({
       ...form,
-      stock: Number(e.target.value) || 0
+      price2: Number(e.target.value) || 0
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "field"
-  }, /*#__PURE__*/React.createElement("label", null, "\uC548\uC804 \uC7AC\uACE0 (\uD2B8\uB808\uC774)"), /*#__PURE__*/React.createElement("input", {
+  }, /*#__PURE__*/React.createElement("label", null, "\uB2E8\uAC003 (\uC6D0)"), /*#__PURE__*/React.createElement("input", {
     className: "input mono",
-    value: form.safety || 0,
+    value: form.price3 ?? form.price ?? 0,
     onChange: e => setForm({
       ...form,
-      safety: Number(e.target.value) || 0
-    })
-  })), /*#__PURE__*/React.createElement("div", {
-    className: "field"
-  }, /*#__PURE__*/React.createElement("label", null, "\uC721\uBB18 \uAE30\uAC04 (\uC77C)"), /*#__PURE__*/React.createElement("input", {
-    className: "input mono",
-    value: form.growing || 0,
-    onChange: e => setForm({
-      ...form,
-      growing: Number(e.target.value) || 0
+      price3: Number(e.target.value) || 0
     })
   })), /*#__PURE__*/React.createElement("div", {
     className: "field",

@@ -138,23 +138,40 @@ window.removeTransaction = (id) => {
 // 저장된 거래 → 거래명세서 미리보기 데이터
 window.txToInvoice = (tx) => {
   if (!tx) return null;
+  const fullTotal = (tx.fullTotal != null) ? tx.fullTotal : ((tx.subtotal || 0) + (tx.vat || 0));
+  const exBoxTotal = (tx.total != null) ? tx.total : fullTotal;
   return {
     customer: window.findCustomer(tx.customerId),
     date: tx.date,
     rows: (tx.lines || []).map(l => ({ itemId: l.itemId, itemName: l.name, spec: l.spec, qty: l.qty, price: l.price })),
     subtotal: tx.subtotal,
     vat: tx.vat,
-    total: tx.total,
+    fullTotal,            // 합계금액(VAT 포함, 상자 공제 전)
+    total: fullTotal,     // 헤더 합계금액 표기용
+    exBoxTotal,           // 상자제외 청구금액
+    boxCount: tx.boxCount || 0,
+    boxDeduct: tx.boxDeduct || 0,
+    prevDue: (tx.prevDue != null) ? tx.prevDue : (window.findCustomer(tx.customerId)?.due || 0),
     payment: tx.method,
     memo: tx.memo,
     txId: tx.id,
   };
 };
 
+// 단가 레벨(거래처가 단가1/2/3 중 선택)
+window.levelLabel = (lv) => `단가${Number(lv) || 1}`;
+window.itemLevelPrice = (item, level) => {
+  if (!item) return 0;
+  const lv = Number(level) || 1;
+  const v = item['price' + lv];
+  return (v === 0 || v) ? Number(v) : (Number(item.price) || 0);
+};
+
+// 호환: 기존 tier 헬퍼 유지(미사용 화면 대비)
 window.tierLabel = (tier) => tier === 'wholesale' ? '도매가' : tier === 'regular' ? '단골가' : '일반가';
 window.tierMultiplier = (tier) => tier === 'wholesale' ? 0.85 : tier === 'regular' ? 0.93 : 1;
 
-// 거래처별 전용 단가: state.customerPrices[customerId][itemId] = price
+// 거래처별 전용 단가(예외 단가): state.customerPrices[customerId][itemId] = price
 window.getCustomerPrice = (itemId, customerId) => {
   const cp = window.Store?.state?.customerPrices;
   const v = cp && cp[customerId] && cp[customerId][itemId];
@@ -165,7 +182,7 @@ window.setCustomerPrice = (customerId, itemId, price) => {
   if (!s.customerPrices) s.customerPrices = {};
   if (!s.customerPrices[customerId]) s.customerPrices[customerId] = {};
   if (price === '' || price === null || price === undefined || isNaN(Number(price))) {
-    delete s.customerPrices[customerId][itemId]; // 비우면 자동가로 복귀
+    delete s.customerPrices[customerId][itemId]; // 비우면 단가 레벨가로 복귀
   } else {
     s.customerPrices[customerId][itemId] = Number(price);
   }
@@ -175,6 +192,13 @@ window.priceFor = (item, customer) => {
   if (customer) {
     const explicit = window.getCustomerPrice(item.id, customer.id);
     if (explicit !== undefined) return explicit;
+    return window.itemLevelPrice(item, customer.priceLevel);
   }
-  return Math.round(item.price * window.tierMultiplier(customer?.tier || 'standard'));
+  return window.itemLevelPrice(item, 1);
+};
+
+// 거래처의 현재 미수금(이 거래 반영 전 잔액) — 미수금 자동 합산 표시용
+window.customerDue = (customerId) => {
+  const c = window.findCustomer(customerId);
+  return c ? (c.due || 0) : 0;
 };

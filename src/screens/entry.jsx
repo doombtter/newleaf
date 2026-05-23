@@ -77,7 +77,7 @@ const ItemAutocomplete = ({ value, onSelect, onChange, autoFocus }) => {
                 {it.variety && <span className="muted" style={{marginLeft:6, fontSize:12}}>· {it.variety}</span>}
                 <span className="muted" style={{marginLeft:8, fontSize:12}}>{it.spec}</span>
               </div>
-              <div className="meta mono">{window.fmt(it.price)}원</div>
+              <div className="meta mono">{window.fmt(window.itemLevelPrice(it, 1))}원</div>
             </div>
           ))}
         </div>
@@ -111,12 +111,14 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     }
     return [blankRow()];
   });
-  const [payment, setPayment] = useState(editTx?.method || 'cash');
+  const [payment, setPayment] = useState(editTx?.method || 'credit');
   const [memo, setMemo] = useState(editTx?.memo || '');
   const [hasVat, setHasVat] = useState(
-    editTx ? (editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0) : true
+    editTx ? (editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0) : false
   );
+  const [boxCount, setBoxCount] = useState(editTx?.boxCount || 0);
   const [savedToast, setSavedToast] = useState(false);
+  const BOX_UNIT = 500;
 
   const updateRow = (key, patch) => {
     setRows(rs => {
@@ -134,7 +136,10 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
+  const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT;          // 상자수 × 500
+  const exBoxTotal = Math.max(0, total - boxDeduct);              // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
+  const prevDue = customer?.due || 0;                             // 현 거래 이전까지 미수금
 
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
 
@@ -160,20 +165,25 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
 
   const persist = async () => {
     const lines = lineData();
+    const charged = exBoxTotal; // 상자제외 청구금액(실제 청구액)
     if (isEdit) {
       const old = state.transactions.find(t => t.id === editTx.id);
       if (old) applyEffects(old, -1); // 기존 효과 원복
       const keepPaid = old && old.method === 'credit'
-        ? Math.min(old.paid || 0, total)
-        : (payment === 'credit' ? 0 : total);
+        ? Math.min(old.paid || 0, charged)
+        : (payment === 'credit' ? 0 : charged);
       const tx = {
         ...old,
         id: editTx.id,
         date,
         customerId,
-        subtotal, vat, total,
+        subtotal, vat,
+        fullTotal: subtotal + vat,
+        boxCount: Number(boxCount) || 0,
+        boxDeduct,
+        total: charged,
         method: payment,
-        paid: payment === 'credit' ? keepPaid : total,
+        paid: payment === 'credit' ? keepPaid : charged,
         items: lines.length,
         lines,
         memo,
@@ -196,8 +206,13 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     }
     const tx = {
       id: state.nextTransactionId,
-      date, customerId, subtotal, vat, total,
-      paid: payment === 'credit' ? 0 : total,
+      date, customerId, subtotal, vat,
+      fullTotal: subtotal + vat,
+      boxCount: Number(boxCount) || 0,
+      boxDeduct,
+      total: charged,
+      prevDue,
+      paid: payment === 'credit' ? 0 : charged,
       method: payment,
       items: lines.length,
       lines,
@@ -232,15 +247,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const handleSaveAndPrint = async () => {
     if (finalRows().length === 0) { alert('품목을 1개 이상 입력해 주세요.'); return; }
     const tx = await persist();
-    onPrint && onPrint({
-      customer,
-      date,
-      rows: finalRows(),
-      subtotal, vat, total,
-      payment,
-      memo,
-      txId: tx.id,
-    });
+    onPrint && onPrint(window.txToInvoice(tx));
   };
 
   useEffect(() => {
@@ -309,7 +316,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
               <label>거래처</label>
               <select className="select" value={customerId} onChange={e => setCustomerId(Number(e.target.value))}>
                 {state.customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name} ({window.tierLabel(c.tier)})</option>
+                  <option key={c.id} value={c.id}>{c.name} ({window.levelLabel(c.priceLevel)})</option>
                 ))}
               </select>
             </div>
@@ -358,6 +365,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
             <div className="field">
               <label>비고</label>
               <textarea className="textarea" rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder="거래 관련 메모 (선택)"/>
+              <label style={{marginTop:8}}>상자 수 (개당 {window.fmt(BOX_UNIT)}원 공제)</label>
+              <input className="input mono" type="number" min="0" value={boxCount}
+                onChange={e => setBoxCount(Math.max(0, Number(e.target.value) || 0))} placeholder="0"/>
             </div>
             <div className="field">
               <label>결제 방식</label>
@@ -379,7 +389,9 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
           <div className="totals">
             <div><span className="lbl">공급가</span> <span className="val mono">{window.fmt(subtotal)}원</span></div>
             <div><span className="lbl">부가세</span> <span className="val mono">{window.fmt(vat)}원</span></div>
-            <div><span className="lbl">합계</span> <span className="val grand mono">{window.fmt(total)}원</span></div>
+            <div><span className="lbl">합계</span> <span className="val mono">{window.fmt(total)}원</span></div>
+            {boxCount > 0 && <div><span className="lbl">상자공제</span> <span className="val mono" style={{color:'var(--warn)'}}>-{window.fmt(boxDeduct)}원</span></div>}
+            <div><span className="lbl">상자제외 청구</span> <span className="val grand mono">{window.fmt(exBoxTotal)}원</span></div>
           </div>
           <div className="row" style={{gap:10}}>
             <button className="btn btn-lg" onClick={isEdit ? () => onSaved && onSaved() : handleCancel}>{isEdit ? '닫기' : '취소'}</button>
