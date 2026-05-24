@@ -4,9 +4,7 @@ const InvoicePage = ({ data, copy }) => {
   const exBoxTotal = (data.exBoxTotal != null) ? data.exBoxTotal : (data.total != null ? data.total : subtotal);
   const prevDue = (data.prevDue != null) ? data.prevDue : (customer?.due || 0);
   const boxCount = data.boxCount || 0;
-  const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 40 - rows.length);
 
   return (
     <div className="invoice-page">
@@ -57,6 +55,8 @@ const InvoicePage = ({ data, copy }) => {
         </tbody>
       </table>
 
+      <div className="invoice-date">거래일자 : <b className="mono">{date || window.todayKey()}</b></div>
+
       <table className="invoice-table">
         <colgroup>
           <col style={{width:'4%'}}/>
@@ -93,11 +93,9 @@ const InvoicePage = ({ data, copy }) => {
               </tr>
             );
           })}
-          {Array.from({ length: blankCount }).map((_, i) => (
-            <tr key={'e' + i} className="empty">
-              <td>{rows.length + i + 1}</td><td></td><td></td><td></td><td></td><td></td><td></td>
-            </tr>
-          ))}
+          {rows.length === 0 && (
+            <tr className="empty"><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+          )}
         </tbody>
       </table>
 
@@ -115,10 +113,6 @@ const InvoicePage = ({ data, copy }) => {
           <div style={{fontSize:14}}><b>농협</b> <span className="mono acct">352-1981-0292-63</span></div>
           <div className="lbl" style={{marginTop:4}}>예금주: {window.BIZ.owner}</div>
         </div>
-      </div>
-
-      <div style={{marginTop:8, fontSize:12, textAlign:'center'}}>
-        거래일자 : <b className="mono">{date || window.todayKey()}</b>
       </div>
     </div>
   );

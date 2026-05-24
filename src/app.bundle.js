@@ -977,6 +977,7 @@ const EntryScreen = ({
   const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : false);
   const [boxOverride, setBoxOverride] = useState(editTx ? editTx.boxCount ?? null : null);
   const [savedToast, setSavedToast] = useState(false);
+  const [, force] = React.useReducer(x => x + 1, 0);
   const BOX_UNIT = 500;
   const updateRow = (key, patch) => {
     setRows(rs => {
@@ -1000,8 +1001,13 @@ const EntryScreen = ({
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT; // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct); // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
-  const prevDue = customer?.due || 0; // 현 거래 이전까지 미수금
-
+  // 현 거래 이전까지 미수금: 수정 시 이 거래의 외상분을 제외한 잔액
+  let prevDue = customer?.due || 0;
+  if (isEdit) {
+    const old = state.transactions.find(t => t.id === editTx.id);
+    if (old && old.method === 'credit') prevDue -= Math.max(0, (old.total || 0) - (old.paid || 0));
+    prevDue = Math.max(0, prevDue);
+  }
   const finalRows = () => rows.filter(r => r.itemId && Number(r.qty) > 0);
   const lineData = () => finalRows().map(r => ({
     itemId: r.itemId,
@@ -1044,6 +1050,7 @@ const EntryScreen = ({
         boxCount: Number(boxCount) || 0,
         boxDeduct,
         total: charged,
+        prevDue,
         method: payment,
         paid: payment === 'credit' ? keepPaid : charged,
         items: lines.length,
@@ -1109,7 +1116,8 @@ const EntryScreen = ({
     await persist();
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
-    onSaved && onSaved();
+    if (!isEdit) onSaved && onSaved(); // 신규는 홈으로, 수정은 화면 유지(확인 가능)
+    else force();
   };
   const handleSaveAndPrint = async () => {
     if (finalRows().length === 0) {
@@ -1563,9 +1571,7 @@ const InvoicePage = ({
   const exBoxTotal = data.exBoxTotal != null ? data.exBoxTotal : data.total != null ? data.total : subtotal;
   const prevDue = data.prevDue != null ? data.prevDue : customer?.due || 0;
   const boxCount = data.boxCount || 0;
-  const [, m, d] = (date || window.todayKey()).split('.');
   const totalQty = rows.reduce((a, r) => a + (Number(r.qty) || 0), 0);
-  const blankCount = Math.max(0, 40 - rows.length);
   return /*#__PURE__*/React.createElement("div", {
     className: "invoice-page"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1654,7 +1660,11 @@ const InvoicePage = ({
     className: "lab"
   }, "\uD329\uC2A4"), /*#__PURE__*/React.createElement("td", {
     className: "val mono"
-  }, window.BIZ.fax)))), /*#__PURE__*/React.createElement("table", {
+  }, window.BIZ.fax)))), /*#__PURE__*/React.createElement("div", {
+    className: "invoice-date"
+  }, "\uAC70\uB798\uC77C\uC790 : ", /*#__PURE__*/React.createElement("b", {
+    className: "mono"
+  }, date || window.todayKey())), /*#__PURE__*/React.createElement("table", {
     className: "invoice-table"
   }, /*#__PURE__*/React.createElement("colgroup", null, /*#__PURE__*/React.createElement("col", {
     style: {
@@ -1701,12 +1711,9 @@ const InvoicePage = ({
     }, window.fmt(Number(r.qty) * Number(r.price))), /*#__PURE__*/React.createElement("td", {
       className: "r"
     }, "\u2014"));
-  }), Array.from({
-    length: blankCount
-  }).map((_, i) => /*#__PURE__*/React.createElement("tr", {
-    key: 'e' + i,
+  }), rows.length === 0 && /*#__PURE__*/React.createElement("tr", {
     className: "empty"
-  }, /*#__PURE__*/React.createElement("td", null, rows.length + i + 1), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", null)))), /*#__PURE__*/React.createElement("div", {
     className: "invoice-foot"
   }, /*#__PURE__*/React.createElement("div", {
     className: "cell"
@@ -1735,15 +1742,7 @@ const InvoicePage = ({
     style: {
       marginTop: 4
     }
-  }, "\uC608\uAE08\uC8FC: ", window.BIZ.owner))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 8,
-      fontSize: 12,
-      textAlign: 'center'
-    }
-  }, "\uAC70\uB798\uC77C\uC790 : ", /*#__PURE__*/React.createElement("b", {
-    className: "mono"
-  }, date || window.todayKey())));
+  }, "\uC608\uAE08\uC8FC: ", window.BIZ.owner))));
 };
 const InvoiceModal = ({
   data,
