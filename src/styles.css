@@ -351,11 +351,12 @@ table.tx tr:hover td{ background: #FBF8F0;}
 .invoice-info td.k{ width: 72px; color: #444; font-weight: 600; border-right: 1px dashed #999; white-space: nowrap;}
 .invoice-table{ width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 17px; table-layout: fixed;}
 .invoice-table td.l{ word-break: break-all; text-align:left; font-size: 21px; font-weight: 700;}
-.invoice-table th, .invoice-table td{ border: 1px solid #111; padding: 0 6px; text-align: center; line-height: 1; height: 24px;}
-.invoice-table tbody tr{ height: 24px;}
+.invoice-table th, .invoice-table td{ border: 1px solid #111; padding: 0 6px; text-align: center; line-height: 1; height: 32px;}
+.invoice-table tbody tr{ height: 32px; page-break-inside: avoid;}
 .invoice-table th{ background:#F0EBDF; font-weight:600; font-size: 16px; white-space:nowrap;}
 .invoice-table td.r{ text-align:right; font-family: var(--font-mono);}
-.invoice-table tr td, .invoice-table tr.empty td{ height: 24px;}
+.invoice-table tr td, .invoice-table tr.empty td{ height: 32px;}
+.invoice-date{ margin: 8px 2px; font-size: 16px; text-align: right;}
 .invoice-foot{
   display:grid; grid-template-columns: 2fr 1fr 2fr; gap: 0;
   border:1px solid #111; border-top:none;
@@ -467,8 +468,10 @@ table.tx tr:hover td{ background: #FBF8F0;}
   .modal{ box-shadow:none !important; max-height:none !important; background:#fff !important; width:auto !important; }
   html{ background:#fff !important; }
   .invoice-page{
-    box-shadow:none !important; margin:0 !important; page-break-after: always;
+    box-shadow:none !important; margin:0 !important; page-break-after: auto;
     width:100% !important; max-width:none !important; min-height:1122px !important;
-    padding:10mm 8mm !important;
+    padding:30mm 8mm 10mm !important;
   }
+  .invoice-table{ page-break-inside:auto !important; }
+  .invoice-table thead{ display:table-header-group; }
 }
