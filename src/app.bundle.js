@@ -975,7 +975,7 @@ const EntryScreen = ({
   const [payment, setPayment] = useState(editTx?.method || 'credit');
   const [memo, setMemo] = useState(editTx?.memo || '');
   const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : false);
-  const [boxOverride, setBoxOverride] = useState(editTx ? editTx.boxCount ?? null : null);
+  const [boxOverride, setBoxOverride] = useState(null); // 수정 시에도 수량 자동합계로 시작
   const [savedToast, setSavedToast] = useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
   const BOX_UNIT = 500;
@@ -1116,8 +1116,8 @@ const EntryScreen = ({
     await persist();
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
-    if (!isEdit) onSaved && onSaved(); // 신규는 홈으로, 수정은 화면 유지(확인 가능)
-    else force();
+    // 신규는 기본(홈), 수정은 거래처(수정한 거래 목록)로 복귀
+    onSaved && onSaved(isEdit ? 'customers' : 'home');
   };
   const handleSaveAndPrint = async () => {
     if (finalRows().length === 0) {
@@ -1449,7 +1449,7 @@ const EntryScreen = ({
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-lg",
-    onClick: isEdit ? () => onSaved && onSaved() : handleCancel
+    onClick: isEdit ? () => onSaved && onSaved('customers') : handleCancel
   }, isEdit ? '닫기' : '취소'), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-lg",
     onClick: handleSave
@@ -1766,7 +1766,10 @@ const InvoiceModal = ({
     style: {
       height: 32
     },
-    onClick: () => window.print()
+    onClick: () => {
+      window.print();
+      setTimeout(() => onClose && onClose(), 200);
+    }
   }, /*#__PURE__*/React.createElement(Icons.Print, {
     size: 14
   }), " \uC778\uC1C4"), /*#__PURE__*/React.createElement("button", {
@@ -4493,6 +4496,7 @@ const App = () => {
     const doPrint = () => {
       if (invoiceRef.current) {
         window.print();
+        setTimeout(() => setInvoice(null), 200);
       } else {
         alert('인쇄는 거래명세서 미리보기에서만 가능합니다.\n거래 입력에서 "저장 후 인쇄"를 누르거나,\n홈·거래처의 거래 목록에서 "재출력"을 선택하세요.');
       }
@@ -4519,10 +4523,10 @@ const App = () => {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
-  const onSaved = () => {
+  const onSaved = target => {
     setEditTx(null);
     setEntryKey(k => k + 1);
-    setPage('home');
+    setPage(target || 'home');
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "app"

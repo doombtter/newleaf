@@ -34,7 +34,7 @@ const App = () => {
 
   React.useEffect(() => {
     const doPrint = () => {
-      if (invoiceRef.current) { window.print(); }
+      if (invoiceRef.current) { window.print(); setTimeout(() => setInvoice(null), 200); }
       else { alert('인쇄는 거래명세서 미리보기에서만 가능합니다.\n거래 입력에서 "저장 후 인쇄"를 누르거나,\n홈·거래처의 거래 목록에서 "재출력"을 선택하세요.'); }
     };
     if (window.saeipari?.onShortcut) {
@@ -53,7 +53,7 @@ const App = () => {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  const onSaved = () => { setEditTx(null); setEntryKey(k => k + 1); setPage('home'); };
+  const onSaved = (target) => { setEditTx(null); setEntryKey(k => k + 1); setPage(target || 'home'); };
 
   return (
     <div className="app">
