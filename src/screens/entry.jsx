@@ -116,7 +116,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const [hasVat, setHasVat] = useState(
     editTx ? (editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0) : false
   );
-  const [boxOverride, setBoxOverride] = useState(editTx ? (editTx.boxCount ?? null) : null);
+  const [boxOverride, setBoxOverride] = useState(null);  // 수정 시에도 수량 자동합계로 시작
   const [savedToast, setSavedToast] = useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
   const BOX_UNIT = 500;
@@ -251,8 +251,8 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     await persist();
     setSavedToast(true);
     setTimeout(() => setSavedToast(false), 2000);
-    if (!isEdit) onSaved && onSaved();   // 신규는 홈으로, 수정은 화면 유지(확인 가능)
-    else force();
+    // 신규는 기본(홈), 수정은 거래처(수정한 거래 목록)로 복귀
+    onSaved && onSaved(isEdit ? 'customers' : 'home');
   };
 
   const handleSaveAndPrint = async () => {
@@ -410,7 +410,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
             <div><span className="lbl">상자제외 청구</span> <span className="val grand mono">{window.fmt(exBoxTotal)}원</span></div>
           </div>
           <div className="row" style={{gap:10}}>
-            <button className="btn btn-lg" onClick={isEdit ? () => onSaved && onSaved() : handleCancel}>{isEdit ? '닫기' : '취소'}</button>
+            <button className="btn btn-lg" onClick={isEdit ? () => onSaved && onSaved('customers') : handleCancel}>{isEdit ? '닫기' : '취소'}</button>
             <button className="btn btn-lg" onClick={handleSave}><Icons.Save size={18}/> {isEdit ? '수정 저장' : '저장'}</button>
             <button className="btn btn-lg btn-primary" onClick={handleSaveAndPrint}>
               <Icons.Print size={18}/> {isEdit ? '저장 후 재출력' : '저장 후 인쇄'}

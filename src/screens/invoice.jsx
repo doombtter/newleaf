@@ -126,7 +126,7 @@ const InvoiceModal = ({ data, onClose }) => {
         <div className="modal-head">
           <h3><Icons.Print size={16}/> &nbsp; 거래명세서 인쇄 미리보기 (고객용 1장)</h3>
           <div className="modal-actions">
-            <button className="btn btn-sm" style={{height:32}} onClick={() => window.print()}><Icons.Print size={14}/> 인쇄</button>
+            <button className="btn btn-sm" style={{height:32}} onClick={() => { window.print(); setTimeout(() => onClose && onClose(), 200); }}><Icons.Print size={14}/> 인쇄</button>
             <button className="icon-btn" onClick={onClose}><Icons.X size={18}/></button>
           </div>
         </div>
