@@ -1135,9 +1135,8 @@ const EntryScreen = ({
     return () => document.removeEventListener('saeipari:save', onSaveKey);
   });
   const handleCancel = () => {
-    if (confirm('입력 중인 거래를 취소하시겠습니까?')) {
-      setRows([blankRow()]);
-      setMemo('');
+    if (confirm('입력 중인 거래를 취소하시겠습니까? (입력 내용이 사라집니다)')) {
+      onSaved && onSaved('home');
     }
   };
   const addFavorite = it => {
