@@ -975,7 +975,15 @@ const EntryScreen = ({
   const [payment, setPayment] = useState(editTx?.method || 'credit');
   const [memo, setMemo] = useState(editTx?.memo || '');
   const [hasVat, setHasVat] = useState(editTx ? editTx.hasVat !== undefined ? editTx.hasVat : (editTx.vat || 0) > 0 : false);
-  const [boxOverride, setBoxOverride] = useState(null); // 수정 시에도 수량 자동합계로 시작
+  const [boxOverride, setBoxOverride] = useState(() => {
+    // 수정 진입 시: 저장값이 자동합계와 다르면 수동 override 유지(예: 0으로 둔 경우),
+    // 같으면 null로 두어 수량 변경 시 자동 합산 추적
+    if (!editTx) return null;
+    const saved = editTx.boxCount;
+    if (saved == null) return null;
+    const initAuto = (editTx.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0);
+    return saved === initAuto ? null : saved;
+  });
   const [savedToast, setSavedToast] = useState(false);
   const [, force] = React.useReducer(x => x + 1, 0);
   const BOX_UNIT = 500;
