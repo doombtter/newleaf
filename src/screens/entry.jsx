@@ -126,8 +126,11 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     return saved === initAuto ? null : saved;
   });
   const [savedToast, setSavedToast] = useState(false);
+  const [savedId, setSavedId] = useState(null); // 한 번 저장하면 같은 거래를 갱신(중복 생성 방지)
   const [, force] = React.useReducer(x => x + 1, 0);
   const BOX_UNIT = 500;
+  const editId = (editTx && editTx.id != null) ? editTx.id : savedId; // 갱신 대상 거래 id
+  const updating = editId != null;
 
   const updateRow = (key, patch) => {
     setRows(rs => {
@@ -150,10 +153,10 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT;          // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct);              // 상자제외 청구금액
   const customer = window.findCustomer(customerId);
-  // 현 거래 이전까지 미수금: 수정 시 이 거래의 외상분을 제외한 잔액
+  // 현 거래 이전까지 미수금: 갱신 시 이 거래의 외상분을 제외한 잔액
   let prevDue = customer?.due || 0;
-  if (isEdit) {
-    const old = state.transactions.find(t => t.id === editTx.id);
+  if (updating) {
+    const old = state.transactions.find(t => t.id === editId);
     if (old && old.method === 'credit') prevDue -= Math.max(0, (old.total || 0) - (old.paid || 0));
     prevDue = Math.max(0, prevDue);
   }
@@ -183,15 +186,16 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const persist = async () => {
     const lines = lineData();
     const charged = exBoxTotal; // 상자제외 청구금액(실제 청구액)
-    if (isEdit) {
-      const old = state.transactions.find(t => t.id === editTx.id);
+    if (updating) {
+      // 이미 저장된(또는 수정 중인) 거래 → 같은 건 갱신(중복 생성 방지)
+      const old = state.transactions.find(t => t.id === editId);
       if (old) applyEffects(old, -1); // 기존 효과 원복
       const keepPaid = old && old.method === 'credit'
         ? Math.min(old.paid || 0, charged)
         : (payment === 'credit' ? 0 : charged);
       const tx = {
         ...old,
-        id: editTx.id,
+        id: editId,
         date,
         customerId,
         subtotal, vat,
@@ -208,7 +212,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
         hasVat,
         updatedAt: new Date().toISOString(),
       };
-      const idx = state.transactions.findIndex(t => t.id === editTx.id);
+      const idx = state.transactions.findIndex(t => t.id === editId);
       if (idx >= 0) state.transactions[idx] = tx; else state.transactions.unshift(tx);
       applyEffects(tx, +1); // 새 효과 적용
       for (const l of lines) {
@@ -239,6 +243,7 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     };
     state.transactions.unshift(tx);
     state.nextTransactionId = tx.id + 1;
+    setSavedId(tx.id); // 이후 같은 화면에서의 저장/인쇄는 이 거래를 갱신
     for (const l of lines) {
       const idx = state.recentItems.indexOf(l.itemId);
       if (idx >= 0) state.recentItems.splice(idx, 1);
