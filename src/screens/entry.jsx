@@ -122,7 +122,8 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
     if (!editTx) return null;
     const saved = editTx.boxCount;
     if (saved == null) return null;
-    const initAuto = (editTx.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0);
+    const initAuto = (editTx.lines || []).reduce((a, l) =>
+      window.itemUsesBox(window.findItem(l.itemId)) ? a + (Number(l.qty) || 0) : a, 0);
     return saved === initAuto ? null : saved;
   });
   const [savedToast, setSavedToast] = useState(false);
@@ -148,7 +149,12 @@ const EntryScreen = ({ onPrint, onSaved, onNav, editTx }) => {
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
-  const autoBoxCount = rows.reduce((a, r) => a + (r.itemId ? (Number(r.qty) || 0) : 0), 0); // 수량 합계
+  // 상자수 자동 합계: '상자 사용(O)' 품목의 수량만 합산
+  const autoBoxCount = rows.reduce((a, r) => {
+    if (!r.itemId) return a;
+    if (!window.itemUsesBox(window.findItem(r.itemId))) return a;
+    return a + (Number(r.qty) || 0);
+  }, 0);
   const boxCount = boxOverride != null ? boxOverride : autoBoxCount; // 비override 시 자동 카운팅
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT;          // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct);              // 상자제외 청구금액

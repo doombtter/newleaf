@@ -30,6 +30,7 @@
       if (i.price1 == null) i.price1 = base;
       if (i.price2 == null) i.price2 = base;
       if (i.price3 == null) i.price3 = base;
+      if (i.useBox == null) i.useBox = true; // 기존 품목은 상자 사용(O) 유지
     });
     (data.customers || []).forEach(c => {
       if (c.due == null) c.due = 0;
@@ -319,6 +320,9 @@ window.txToInvoice = tx => {
     txId: tx.id
   };
 };
+
+// 품목별 상자 사용 여부(O/X). 값이 없으면 사용(O)으로 간주 — 기존 데이터 호환
+window.itemUsesBox = item => !item || item.useBox !== false;
 
 // 단가 레벨(거래처가 단가1/2/3 중 선택)
 window.levelLabel = lv => `단가${Number(lv) || 1}`;
@@ -981,7 +985,7 @@ const EntryScreen = ({
     if (!editTx) return null;
     const saved = editTx.boxCount;
     if (saved == null) return null;
-    const initAuto = (editTx.lines || []).reduce((a, l) => a + (Number(l.qty) || 0), 0);
+    const initAuto = (editTx.lines || []).reduce((a, l) => window.itemUsesBox(window.findItem(l.itemId)) ? a + (Number(l.qty) || 0) : a, 0);
     return saved === initAuto ? null : saved;
   });
   const [savedToast, setSavedToast] = useState(false);
@@ -1007,7 +1011,12 @@ const EntryScreen = ({
   const subtotal = rows.reduce((a, r) => a + (Number(r.qty) || 0) * (Number(r.price) || 0), 0);
   const vat = hasVat ? Math.round(subtotal * 0.1) : 0;
   const total = subtotal + vat;
-  const autoBoxCount = rows.reduce((a, r) => a + (r.itemId ? Number(r.qty) || 0 : 0), 0); // 수량 합계
+  // 상자수 자동 합계: '상자 사용(O)' 품목의 수량만 합산
+  const autoBoxCount = rows.reduce((a, r) => {
+    if (!r.itemId) return a;
+    if (!window.itemUsesBox(window.findItem(r.itemId))) return a;
+    return a + (Number(r.qty) || 0);
+  }, 0);
   const boxCount = boxOverride != null ? boxOverride : autoBoxCount; // 비override 시 자동 카운팅
   const boxDeduct = (Number(boxCount) || 0) * BOX_UNIT; // 상자수 × 500
   const exBoxTotal = Math.max(0, total - boxDeduct); // 상자제외 청구금액
@@ -2560,6 +2569,7 @@ const InventoryScreen = () => {
     price1: 15000,
     price2: 15000,
     price3: 15000,
+    useBox: true,
     memo: ''
   });
   return /*#__PURE__*/React.createElement("div", {
@@ -2650,10 +2660,14 @@ const InventoryScreen = () => {
     }
   }, "\uB2E8\uAC003"), /*#__PURE__*/React.createElement("th", {
     style: {
+      width: 70
+    }
+  }, "\uC0C1\uC790"), /*#__PURE__*/React.createElement("th", {
+    style: {
       width: 110
     }
   }))), /*#__PURE__*/React.createElement("tbody", null, items.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    colSpan: "7",
+    colSpan: "8",
     style: {
       textAlign: 'center',
       padding: 40,
@@ -2667,7 +2681,11 @@ const InventoryScreen = () => {
     className: "num"
   }, window.fmt(window.itemLevelPrice(it, 2)), "\uC6D0"), /*#__PURE__*/React.createElement("td", {
     className: "num"
-  }, window.fmt(window.itemLevelPrice(it, 3)), "\uC6D0"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
+  }, window.fmt(window.itemLevelPrice(it, 3)), "\uC6D0"), /*#__PURE__*/React.createElement("td", null, window.itemUsesBox(it) ? /*#__PURE__*/React.createElement("span", {
+    className: "tag tag-green"
+  }, "O") : /*#__PURE__*/React.createElement("span", {
+    className: "tag tag-neutral"
+  }, "X")), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
     className: "row",
     style: {
       gap: 4
@@ -2828,6 +2846,31 @@ const ItemEditModal = ({
       price3: Number(e.target.value) || 0
     })
   })), /*#__PURE__*/React.createElement("div", {
+    className: "field"
+  }, /*#__PURE__*/React.createElement("label", null, "\uC0C1\uC790 \uC0AC\uC6A9 (\uC0C1\uC790\uC218 \uC790\uB3D9\uD569\uACC4 \uD3EC\uD568)"), /*#__PURE__*/React.createElement("div", {
+    className: "seg",
+    style: {
+      width: '100%'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: window.itemUsesBox(form) ? 'on' : '',
+    style: {
+      flex: 1
+    },
+    onClick: () => setForm({
+      ...form,
+      useBox: true
+    })
+  }, "O (\uC0AC\uC6A9)"), /*#__PURE__*/React.createElement("button", {
+    className: !window.itemUsesBox(form) ? 'on' : '',
+    style: {
+      flex: 1
+    },
+    onClick: () => setForm({
+      ...form,
+      useBox: false
+    })
+  }, "X (\uBBF8\uC0AC\uC6A9)"))), /*#__PURE__*/React.createElement("div", {
     className: "field",
     style: {
       gridColumn: 'span 2'

@@ -29,6 +29,7 @@
       if (i.price1 == null) i.price1 = base;
       if (i.price2 == null) i.price2 = base;
       if (i.price3 == null) i.price3 = base;
+      if (i.useBox == null) i.useBox = true; // 기존 품목은 상자 사용(O) 유지
     });
     (data.customers || []).forEach(c => {
       if (c.due == null) c.due = 0;
