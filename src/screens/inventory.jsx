@@ -29,7 +29,7 @@ const InventoryScreen = () => {
     force();
   };
 
-  const blank = () => ({ name: '', variety: '', tray: 50, spec: '50구', unit: 'tray', price1: 15000, price2: 15000, price3: 15000, memo: '' });
+  const blank = () => ({ name: '', variety: '', tray: 50, spec: '50구', unit: 'tray', price1: 15000, price2: 15000, price3: 15000, useBox: true, memo: '' });
 
   return (
     <div className="col" style={{gap:18}}>
@@ -61,10 +61,11 @@ const InventoryScreen = () => {
               <th className="num" style={{width:110}}>단가1</th>
               <th className="num" style={{width:110}}>단가2</th>
               <th className="num" style={{width:110}}>단가3</th>
+              <th style={{width:70}}>상자</th>
               <th style={{width:110}}></th>
             </tr></thead>
             <tbody>
-              {items.length === 0 && <tr><td colSpan="7" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>등록된 품목이 없습니다. "신규 품목"으로 추가하세요.</td></tr>}
+              {items.length === 0 && <tr><td colSpan="8" style={{textAlign:'center', padding:40, color:'var(--ink-muted)'}}>등록된 품목이 없습니다. "신규 품목"으로 추가하세요.</td></tr>}
               {items.map(it => (
                 <tr key={it.id}>
                   <td><b>{it.name}</b></td>
@@ -73,6 +74,11 @@ const InventoryScreen = () => {
                   <td className="num">{window.fmt(window.itemLevelPrice(it, 1))}원</td>
                   <td className="num">{window.fmt(window.itemLevelPrice(it, 2))}원</td>
                   <td className="num">{window.fmt(window.itemLevelPrice(it, 3))}원</td>
+                  <td>
+                    {window.itemUsesBox(it)
+                      ? <span className="tag tag-green">O</span>
+                      : <span className="tag tag-neutral">X</span>}
+                  </td>
                   <td>
                     <div className="row" style={{gap:4}}>
                       <button className="btn btn-sm btn-ghost" onClick={() => { setEditing(it); setCreating(false); }}>수정</button>
@@ -125,6 +131,12 @@ const ItemEditModal = ({ item, creating, onSave, onClose }) => {
           <div className="field"><label>단가1 (원)</label><input className="input mono" value={form.price1 ?? form.price ?? 0} onChange={e=>setForm({...form, price1:Number(e.target.value)||0})}/></div>
           <div className="field"><label>단가2 (원)</label><input className="input mono" value={form.price2 ?? form.price ?? 0} onChange={e=>setForm({...form, price2:Number(e.target.value)||0})}/></div>
           <div className="field"><label>단가3 (원)</label><input className="input mono" value={form.price3 ?? form.price ?? 0} onChange={e=>setForm({...form, price3:Number(e.target.value)||0})}/></div>
+          <div className="field"><label>상자 사용 (상자수 자동합계 포함)</label>
+            <div className="seg" style={{width:'100%'}}>
+              <button className={window.itemUsesBox(form) ? 'on' : ''} style={{flex:1}} onClick={()=>setForm({...form, useBox:true})}>O (사용)</button>
+              <button className={!window.itemUsesBox(form) ? 'on' : ''} style={{flex:1}} onClick={()=>setForm({...form, useBox:false})}>X (미사용)</button>
+            </div>
+          </div>
           <div className="field" style={{gridColumn:'span 2'}}><label>비고</label><input className="input" value={form.memo||''} onChange={e=>setForm({...form, memo:e.target.value})}/></div>
         </div>
         <div className="row" style={{justifyContent:'flex-end', gap:8, padding:16, background:'#FBF8F0', borderTop:'1px solid var(--line)'}}>

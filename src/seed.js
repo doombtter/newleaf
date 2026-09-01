@@ -158,6 +158,9 @@ window.txToInvoice = (tx) => {
   };
 };
 
+// 품목별 상자 사용 여부(O/X). 값이 없으면 사용(O)으로 간주 — 기존 데이터 호환
+window.itemUsesBox = (item) => !item || item.useBox !== false;
+
 // 단가 레벨(거래처가 단가1/2/3 중 선택)
 window.levelLabel = (lv) => `단가${Number(lv) || 1}`;
 window.itemLevelPrice = (item, level) => {
